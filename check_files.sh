@@ -11,6 +11,8 @@ RETURN_CODE=3 # UNKNOWN
 RETURN_MESSAGE=""
 
 SEARCH_PATH="/tmp"
+RECURSIVE=false
+ERROR_CODE=2 # CRITICAL
 
 MIN_AGE=0
 NEWER_FILES_NB=0
@@ -22,10 +24,8 @@ OLDER_FILES_NB=0
 OLDEST_FILE_NAME=""
 OLDEST_FILE_DATE=""
 
-RECURSIVE=false
-
-ERROR_CODE=2 # CRITICAL
-
+MIN_FILES=0
+MAX_FILES=65535 # Totally arbitrary
 ## Help message
 
 help_message() {
@@ -37,13 +37,14 @@ Check some properties on files in a given directory on POSIX systems.
 
 Usage: $(basename "$0") [-h]
 
- -d/--dir       <path>   Directory to search files in (default: ${SEARCH_PATH})
- -r/--recursive          Search recursively (default: false) 
- -a/--min-age   <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
- -A/--max-age   <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
- -W/--warn_only          Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
- -h/--help               Show this help
- -v/--verbose            Verbose mode
+ -d/--dir         <path>   Directory to search files in (default: ${SEARCH_PATH})
+ -r/--recursive            Search recursively (default: false) 
+ -a/--min-age     <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
+ -A/--max-age     <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
+ -n/--min-number  <int>    Minimum number of files (default: ${MIN_COUNT})
+ -W/--warn_only            Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
+ -h/--help                 Show this help
+ -v/--verbose              Verbose mode
 
 EOF
 };
@@ -83,9 +84,9 @@ else
 fi
 OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $6 " " $7 " " $8}')"
 OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $9}')"
-
-
 }
+
+
 
 ## Arguments management ##
 
