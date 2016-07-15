@@ -7,25 +7,32 @@ set +x
 
 VERBOSE=false
 VERBOSITY=0
-RETURN_CODE=3 # UNKNOWN
+RETURN_CODE=3      # UNKNOWN : Default status in anything goes wrong past this line.
+ERROR_CODE=2       # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
 RETURN_MESSAGE=""
 
-SEARCH_PATH="/tmp"
+
 RECURSIVE=false
 ERROR_CODE=2 # CRITICAL
+SEARCH_PATH="/tmp" # If not provided, search here...
 
-MIN_AGE=0
+
+MIN_AGE=0          # By default, catch any file...
 NEWER_FILES_NB=0
 NEWEST_FILE_NAME=""
 NEWEST_FILE_DATE=""
 
-MAX_AGE=10512000 # ~20 years
+MAX_AGE=10512000   # ~20 years, should be enough for everyone...
 OLDER_FILES_NB=0
 OLDEST_FILE_NAME=""
 OLDEST_FILE_DATE=""
 
 MIN_FILES=0
 MAX_FILES=65535 # Totally arbitrary
+
+RECURSIVE=false    # By default, we don't watch into subdirectories
+ERROR_CODE=2 # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
+
 ## Help message
 
 help_message() {
@@ -35,7 +42,10 @@ $(basename "$0")
 
 Check some properties on files in a given directory on POSIX systems.
 
+Returns OK, only if all the constraints are met.
+
 Usage: $(basename "$0") [-h]
+
 
  -d/--dir         <path>   Directory to search files in (default: ${SEARCH_PATH})
  -r/--recursive            Search recursively (default: false) 
@@ -49,6 +59,7 @@ Usage: $(basename "$0") [-h]
 EOF
 };
 
+# Check if one provides "abc" as a numeric value...
 is_int() {
     case "$1" in
         (*[!0-9]*|'')
@@ -58,6 +69,7 @@ is_int() {
     esac
 }
 
+# Find the newest file
 newest_file() {
 
 if ${RECURSIVE};
@@ -72,6 +84,7 @@ NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $6 " " $7 " " $8}')"
 NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $9}')"
 }
 
+# Find the oldest file
 oldest_file() {
 
 if ${RECURSIVE};
@@ -86,10 +99,10 @@ OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $6 " " $7 " " $8}')"
 OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $9}')"
 }
 
-
-
 ## Arguments management ##
+#  Any option requires its argument!
 
+## KISS way to handle long options
 for arg in "${@}"; do
   shift
   case "${arg}" in
@@ -99,10 +112,12 @@ for arg in "${@}"; do
      ("--min-age")   set -- "${@}" "-a" ;;
      ("--max-age")   set -- "${@}" "-A" ;;
      ("--recursive") set -- "${@}" "-r" ;;
+     ("--warn-only") set -- "${@}" "-W" ;;     
      (*)             set -- "${@}" "${arg}"
   esac
 done;
 
+## Parse command line options
 while getopts "vWhd:ra:A:" opt; do
     case "${opt}" in
         (v)
@@ -158,7 +173,9 @@ while getopts "vWhd:ra:A:" opt; do
     esac
 done;
 
+
 ## Main script ##
+# Do the shit that matters...
 
 ## Is there a file newer than min_age?
 newest_file "${SEARCH_PATH}";
@@ -185,10 +202,11 @@ then
 fi
 
 ## All tests passed successfully!
-## Return 0 (OK) and a convenient message
+## Return 0 (OK) and a gentle & convenient message
 
 if $RECURSIVE; then tag='(R)'; else tag=''; fi;
 RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})";
 RETURN_CODE=0
 printf "%s\n" "${RETURN_MESSAGE}";
 exit ${RETURN_CODE};
+
