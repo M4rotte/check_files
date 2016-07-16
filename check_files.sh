@@ -1,5 +1,5 @@
-#!/bin/bash --posix
-#~ #!/usr/bin/env sh
+#!/usr/bin/env sh
+##!/bin/bash --posix # dash has no typeset...
 
 set +x
 
@@ -69,6 +69,14 @@ is_int() {
     esac
 }
 
+# Count regular files
+nb_files() {
+
+NB_FILES_R="$(find "$SEARCH_PATH" -type f |wc -l)"
+NB_FILES="$(find "$SEARCH_PATH"/* "$SEARCH_PATH"/.* -prune -type f |wc -l)"
+
+}
+
 # Find the newest file
 newest_file() {
 
@@ -77,8 +85,8 @@ then
     NEWEST_FILE="$(find $1 -type f |xargs ls -alt | head -n 1)"
     NEWER_FILES_NB="$(find $1 -type f -mmin -${MIN_AGE} |wc -l)"
 else
-    NEWEST_FILE="$(find $1/* -prune -type f |xargs ls -alt | head -n 1)"
-    NEWER_FILES_NB="$(find $1/* -prune -type f -mmin -${MIN_AGE} |wc -l)"
+    NEWEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -alt | head -n 1)"
+    NEWER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin -${MIN_AGE} |wc -l)"
 fi
 NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $6 " " $7 " " $8}')"
 NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $9}')"
@@ -92,8 +100,8 @@ then
     OLDEST_FILE="$(find $1 -type f |xargs ls -alrt | head -n 1)"
     OLDER_FILES_NB="$(find $1 -type f -mmin +${MAX_AGE} |wc -l)"
 else
-    OLDEST_FILE="$(find $1/* -prune -type f |xargs ls -alrt | head -n 1)"
-    OLDER_FILES_NB="$(find $1/* -prune -type f -mmin +${MAX_AGE} |wc -l)"
+    OLDEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -alrt | head -n 1)"
+    OLDER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin +${MAX_AGE} |wc -l)"
 fi
 OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $6 " " $7 " " $8}')"
 OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $9}')"
@@ -175,38 +183,61 @@ done;
 
 
 ## Main script ##
-# Do the shit that matters...
 
 ## Is there a file newer than min_age?
 newest_file "${SEARCH_PATH}";
-if [ ${NEWER_FILES_NB} -gt 0 ];
+if [ ${NEWER_FILES_NB} -gt 0 ]
 then
     typeset -i NEWER_FILES_NB; # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ";
-    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})";
-    RETURN_CODE=${ERROR_CODE};
-    printf "%s\n" "${RETURN_MESSAGE}";
-    exit ${RETURN_CODE};
+    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
 fi
 
 ## Is there a file older than max_age?
-oldest_file "${SEARCH_PATH}";
-if [ ${OLDER_FILES_NB} -gt 0 ];
+oldest_file "${SEARCH_PATH}"
+if [ ${OLDER_FILES_NB} -gt 0 ]
 then
-    typeset -i OLDER_FILES_NB; # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ";
-    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})";
-    RETURN_CODE=${ERROR_CODE};
-    printf "%s\n" "${RETURN_MESSAGE}";
-    exit ${RETURN_CODE};
+    typeset -i OLDER_FILES_NB # not POSIX, unsupported by dash
+    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
 fi
 
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
 
-if $RECURSIVE; then tag='(R)'; else tag=''; fi;
-RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})";
+## Count regular files
+
+nb_files
+
+if $RECURSIVE
+then 
+    tag='(R)'
+    nbf=$NB_FILES_R
+else 
+    tag=''
+    nbf=$NB_FILES
+fi
+
+
+if [ $nbf -gt 0 ]
+then
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+else
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - No regular file"
+fi    
+    
 RETURN_CODE=0
-printf "%s\n" "${RETURN_MESSAGE}";
-exit ${RETURN_CODE};
+printf "%s\n" "${RETURN_MESSAGE}"
+exit ${RETURN_CODE}
+
+
+
+
+
 
