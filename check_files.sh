@@ -3,7 +3,7 @@
 
 set +x
 
-## Default values
+# Default values
 
 VERBOSE=false
 VERBOSITY=0
@@ -33,7 +33,7 @@ MAX_FILES=65535 # Totally arbitrary
 RECURSIVE=false    # By default, we don't watch into subdirectories
 ERROR_CODE=2 # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
 
-## Help message
+# Help message
 
 help_message() {
 cat <<EOF
@@ -82,14 +82,14 @@ newest_file() {
 
 if ${RECURSIVE};
 then
-    NEWEST_FILE="$(find $1 -type f |xargs ls -alt | head -n 1)"
+    NEWEST_FILE="$(find $1 -type f |xargs ls -aot | head -n 1)"
     NEWER_FILES_NB="$(find $1 -type f -mmin -${MIN_AGE} |wc -l)"
 else
-    NEWEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -alt | head -n 1)"
+    NEWEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -aot | head -n 1)"
     NEWER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin -${MIN_AGE} |wc -l)"
 fi
-NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $6 " " $7 " " $8}')"
-NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $9}')"
+NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $5 " " $6 " " $7}')"
+NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $8}')"
 }
 
 # Find the oldest file
@@ -97,17 +97,17 @@ oldest_file() {
 
 if ${RECURSIVE};
 then
-    OLDEST_FILE="$(find $1 -type f |xargs ls -alrt | head -n 1)"
+    OLDEST_FILE="$(find $1 -type f |xargs ls -aort | head -n 1)"
     OLDER_FILES_NB="$(find $1 -type f -mmin +${MAX_AGE} |wc -l)"
 else
-    OLDEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -alrt | head -n 1)"
+    OLDEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -aort | head -n 1)"
     OLDER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin +${MAX_AGE} |wc -l)"
 fi
-OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $6 " " $7 " " $8}')"
-OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $9}')"
+OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $5 " " $6 " " $7}')"
+OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $8}')"
 }
 
-## Arguments management ##
+# Arguments management #
 #  Any option requires its argument!
 
 ## KISS way to handle long options
@@ -182,34 +182,7 @@ while getopts "vWhd:ra:A:" opt; do
 done;
 
 
-## Main script ##
-
-## Is there a file newer than min_age?
-newest_file "${SEARCH_PATH}";
-if [ ${NEWER_FILES_NB} -gt 0 ]
-then
-    typeset -i NEWER_FILES_NB; # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
-fi
-
-## Is there a file older than max_age?
-oldest_file "${SEARCH_PATH}"
-if [ ${OLDER_FILES_NB} -gt 0 ]
-then
-    typeset -i OLDER_FILES_NB # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}'${SEARCH_PATH}' Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
-fi
-
-## All tests passed successfully!
-## Return 0 (OK) and a gentle & convenient message
+# Main script #
 
 ## Count regular files
 
@@ -223,6 +196,35 @@ else
     tag=''
     nbf=$NB_FILES
 fi
+
+
+
+## Is there a file newer than min_age?
+newest_file "${SEARCH_PATH}";
+if [ ${NEWER_FILES_NB} -gt 0 ]
+then
+    typeset -i NEWER_FILES_NB; # not POSIX, unsupported by dash
+    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
+fi
+
+## Is there a file older than max_age?
+oldest_file "${SEARCH_PATH}"
+if [ ${OLDER_FILES_NB} -gt 0 ]
+then
+    typeset -i OLDER_FILES_NB # not POSIX, unsupported by dash
+    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
+fi
+
+## All tests passed successfully!
+## Return 0 (OK) and a gentle & convenient message
 
 
 if [ $nbf -gt 0 ]
