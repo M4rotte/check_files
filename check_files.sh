@@ -5,18 +5,16 @@ set +x
 
 # Default values
 
+## General behaviour
 VERBOSE=false
 VERBOSITY=0
 RETURN_CODE=3      # UNKNOWN : Default status in anything goes wrong past this line.
 ERROR_CODE=2       # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
+RECURSIVE=false    # Do not search in sub directories by default
+SEARCH_PATH=$HOME  # If not provided, search there...
 RETURN_MESSAGE=""
 
-
-RECURSIVE=false
-ERROR_CODE=2 # CRITICAL
-SEARCH_PATH="/tmp" # If not provided, search here...
-
-
+## Age constraints
 MIN_AGE=0          # By default, catch any file...
 NEWER_FILES_NB=0
 NEWEST_FILE_NAME=""
@@ -27,11 +25,9 @@ OLDER_FILES_NB=0
 OLDEST_FILE_NAME=""
 OLDEST_FILE_DATE=""
 
-MIN_FILES=0
-MAX_FILES=65535 # Totally arbitrary
-
-RECURSIVE=false    # By default, we don't watch into subdirectories
-ERROR_CODE=2 # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
+## Count constraints
+MIN_COUNT=0
+MAX_COUNT=65535    # Totally arbitrary
 
 # Help message
 
@@ -71,15 +67,12 @@ is_int() {
 
 # Count regular files
 nb_files() {
-
 NB_FILES_R="$(find "$SEARCH_PATH" -type f |wc -l)"
 NB_FILES="$(find "$SEARCH_PATH"/* "$SEARCH_PATH"/.* -prune -type f |wc -l)"
-
 }
 
 # Find the newest file
 newest_file() {
-
 if ${RECURSIVE};
 then
     NEWEST_FILE="$(find $1 -type f |xargs ls -aot | head -n 1)"
@@ -94,7 +87,6 @@ NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $8}')"
 
 # Find the oldest file
 oldest_file() {
-
 if ${RECURSIVE};
 then
     OLDEST_FILE="$(find $1 -type f |xargs ls -aort | head -n 1)"
@@ -108,7 +100,7 @@ OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $8}')"
 }
 
 # Arguments management #
-#  Any option requires its argument!
+# Any option requires its argument!
 
 ## KISS way to handle long options
 for arg in "${@}"; do
@@ -183,11 +175,10 @@ done;
 
 
 # Main script #
-
 ## Count regular files
-
 nb_files
 
+## Recursive?
 if $RECURSIVE
 then 
     tag='(R)'
@@ -196,8 +187,6 @@ else
     tag=''
     nbf=$NB_FILES
 fi
-
-
 
 ## Is there a file newer than min_age?
 newest_file "${SEARCH_PATH}";
@@ -225,18 +214,17 @@ fi
 
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
-
-
 if [ $nbf -gt 0 ]
 then
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
 else
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - No regular file"
 fi    
-    
 RETURN_CODE=0
 printf "%s\n" "${RETURN_MESSAGE}"
 exit ${RETURN_CODE}
+
+
 
 
 
