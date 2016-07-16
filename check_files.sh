@@ -43,7 +43,7 @@ Returns OK, only if all the constraints are met.
 Usage: $(basename "$0") [-h]
 
 
- -d/--dir         <path>   Directory to search files in (default: ${SEARCH_PATH})
+ -d/--dir         <path>   Directory to search files in (default: \$HOME)
  -r/--recursive            Search recursively (default: false) 
  -a/--min-age     <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age     <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
@@ -216,7 +216,7 @@ if [ ${NEWER_FILES_NB} -gt 0 ]
 then
     typeset -i NEWER_FILES_NB; # not POSIX, unsupported by dash
     RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} - ${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
     RETURN_CODE=${ERROR_CODE}
     printf "%s\n" "${RETURN_MESSAGE}"
     exit ${RETURN_CODE}
@@ -228,7 +228,7 @@ if [ ${OLDER_FILES_NB} -gt 0 ]
 then
     typeset -i OLDER_FILES_NB # not POSIX, unsupported by dash
     RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} - ${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
     RETURN_CODE=${ERROR_CODE}
     printf "%s\n" "${RETURN_MESSAGE}"
     exit ${RETURN_CODE}
@@ -261,7 +261,7 @@ fi
 ## Return 0 (OK) and a gentle & convenient message
 if [ ${NB_FILES} -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE}) > ${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) - ${NB_FILES} files"
 else
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - No regular file"
 fi    
