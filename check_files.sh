@@ -47,7 +47,8 @@ Usage: $(basename "$0") [-h]
  -r/--recursive            Search recursively (default: false) 
  -a/--min-age     <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age     <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
- -n/--min-number  <int>    Minimum number of files (default: ${MIN_COUNT})
+ -n/--min-count   <int>    Minimum number of files (default: ${MIN_COUNT})
+ -N/--max-count   <int>    Maximum number of files (default: ${MAX_COUNT})
  -W/--warn-only            Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
  -h/--help                 Show this help
  -v/--verbose              Verbose mode
@@ -67,8 +68,13 @@ is_int() {
 
 # Count regular files
 nb_files() {
-NB_FILES_R="$(find "$SEARCH_PATH" -type f |wc -l)"
-NB_FILES="$(find "$SEARCH_PATH"/* "$SEARCH_PATH"/.* -prune -type f |wc -l)"
+if ${RECURSIVE}
+then
+    NB_FILES="$(find "$SEARCH_PATH" -type f |wc -l)"
+else    
+    NB_FILES="$(find "$SEARCH_PATH"/* "$SEARCH_PATH"/.* -prune -type f |wc -l)"
+fi
+typeset -i NB_FILES  # not POSIX, unsupported by dash    
 }
 
 # Find the newest file
@@ -111,6 +117,8 @@ for arg in "${@}"; do
      ("--dir")       set -- "${@}" "-d" ;;
      ("--min-age")   set -- "${@}" "-a" ;;
      ("--max-age")   set -- "${@}" "-A" ;;
+     ("--min-count") set -- "${@}" "-n" ;;
+     ("--max-count") set -- "${@}" "-N" ;;
      ("--recursive") set -- "${@}" "-r" ;;
      ("--warn-only") set -- "${@}" "-W" ;;     
      (*)             set -- "${@}" "${arg}"
@@ -118,7 +126,7 @@ for arg in "${@}"; do
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:" opt; do
+while getopts "vWhd:ra:A:n:N:" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -164,6 +172,26 @@ while getopts "vWhd:ra:A:" opt; do
                 MAX_AGE=${OPTARG};
             fi
             ;;
+        (n)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -n expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MIN_COUNT=${OPTARG};
+            fi
+            ;;
+        (N)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\N" "Option -A expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MAX_COUNT=${OPTARG};
+            fi
+            ;;
         (\?)
             printf "%s\n" "Unsupported option...";
             help_message;
@@ -174,17 +202,13 @@ while getopts "vWhd:ra:A:" opt; do
 done;
 
 # Main script #
-## Count regular files
-nb_files
 
 ## Recursive?
 if $RECURSIVE
 then 
     tag='(R)'
-    nbf=$NB_FILES_R
 else 
     tag=''
-    nbf=$NB_FILES
 fi
 
 ## Is there a file newer than min_age?
@@ -211,9 +235,32 @@ then
     exit ${RETURN_CODE}
 fi
 
+## Count regular files
+nb_files
+
+## Is there too many files?
+if [ ${NB_FILES} -gt ${MAX_COUNT} ]
+then
+    RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
+fi
+
+## Is there not enough files?
+if [ ${NB_FILES} -lt ${MIN_COUNT} ]
+then
+    RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+    RETURN_CODE=${ERROR_CODE}
+    printf "%s\n" "${RETURN_MESSAGE}"
+    exit ${RETURN_CODE}
+fi
+
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
-if [ $nbf -gt 0 ]
+if [ ${NB_FILES} -gt 0 ]
 then
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - Newest:${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) Oldest:${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
 else
