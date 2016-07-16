@@ -48,7 +48,7 @@ Usage: $(basename "$0") [-h]
  -a/--min-age     <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age     <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
  -n/--min-number  <int>    Minimum number of files (default: ${MIN_COUNT})
- -W/--warn_only            Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
+ -W/--warn-only            Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
  -h/--help                 Show this help
  -v/--verbose              Verbose mode
 
@@ -173,7 +173,6 @@ while getopts "vWhd:ra:A:" opt; do
     esac
 done;
 
-
 # Main script #
 ## Count regular files
 nb_files
@@ -223,11 +222,3 @@ fi
 RETURN_CODE=0
 printf "%s\n" "${RETURN_MESSAGE}"
 exit ${RETURN_CODE}
-
-
-
-
-
-
-
-
