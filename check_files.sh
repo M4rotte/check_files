@@ -20,7 +20,7 @@ NEWER_FILES_NB=0
 NEWEST_FILE_NAME=""
 NEWEST_FILE_DATE=""
 
-MAX_AGE=10512000   # ~20 years, should be enough for everyone...
+MAX_AGE=10512000   # ~20 years, TODO: permit -1 for no max
 OLDER_FILES_NB=0
 OLDEST_FILE_NAME=""
 OLDEST_FILE_DATE=""
@@ -106,7 +106,6 @@ OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $8}')"
 }
 
 # Arguments management #
-# Any option requires its argument!
 
 ## KISS way to handle long options
 for arg in "${@}"; do
