@@ -8,7 +8,7 @@ set +x
 ## General behaviour
 VERBOSE=false
 VERBOSITY=0
-RETURN_CODE=3      # UNKNOWN : Default status in anything goes wrong past this line.
+RETURN_CODE=3      # UNKNOWN : Default status if anything goes wrong past this line.
 ERROR_CODE=2       # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
 RECURSIVE=false    # Do not search in sub directories by default
 SEARCH_PATH=$HOME  # If not provided, search there...
