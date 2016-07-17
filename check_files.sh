@@ -14,15 +14,15 @@ SEARCH_PATH=$HOME  # If not provided, search there...
 RETURN_MESSAGE=""
 
 ## Age constraints
-MIN_AGE=0          # By default, catch any file...
+MIN_AGE=0
 NEWER_FILES_NB=0
 
-MAX_AGE=10512000   # ~20 years, TODO: permit -1 for no max
+MAX_AGE=-1
 OLDER_FILES_NB=0
 
 ## Count constraints
 MIN_COUNT=0
-MAX_COUNT=65535    # Totally arbitrary
+MAX_COUNT=-1
 
 # Help message
 
@@ -199,48 +199,61 @@ else
     tag=''
 fi
 
-## Is there a file newer than min_age?
-newer_files_nb "${SEARCH_PATH}";
-if [ ${NEWER_FILES_NB} -gt 0 ]
+if [ $MIN_AGE -gt 0 ]
 then
-    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}"
-    RETURN_MESSAGE="${RETURN_MESSAGE}"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
+    ## Is there a file newer than min_age?
+    newer_files_nb "${SEARCH_PATH}";
+    if [ ${NEWER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${RETURN_MESSAGE}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
 fi
 
-## Is there a file older than max_age?
-older_files_nb "${SEARCH_PATH}"
-if [ ${OLDER_FILES_NB} -gt 0 ]
+if [ $MAX_AGE -gt -1 ]
 then
-    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
+    ## Is there a file older than max_age?
+    older_files_nb "${SEARCH_PATH}"
+    if [ ${OLDER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
 fi
 
 ## Count regular files
 nb_files "${SEARCH_PATH}"
 
-## Is there too many files?
-if [ ${NB_FILES} -gt ${MAX_COUNT} ]
+
+if [ $MAX_COUNT -gt -1 ]
 then
-    RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
+    ## Is there too many files?
+    if [ ${NB_FILES} -gt ${MAX_COUNT} ]
+    then
+        RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
 fi
 
-## Is there not enough files?
-if [ ${NB_FILES} -lt ${MIN_COUNT} ]
+if [ $MIN_COUNT -gt 0 ]
 then
-    RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
-    RETURN_CODE=${ERROR_CODE}
-    printf "%s\n" "${RETURN_MESSAGE}"
-    exit ${RETURN_CODE}
+    ## Is there not enough files?
+    if [ ${NB_FILES} -lt ${MIN_COUNT} ]
+    then
+        RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
 fi
 
 ## All tests passed successfully!
