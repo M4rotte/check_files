@@ -268,14 +268,15 @@ fi
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    firstlast=$(find $SEARCH_PATH $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%s kB\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print $3 " " $4 " " $2} END{print $3 " " $4 " " $2}')
+    firstlast=$(find $SEARCH_PATH $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%s kB\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print $3 " (" $4 ") " $2} END{print $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
     }
     newest_file() {
     printf "$firstlast\n" |tail -1
     }
-OLDNEW_MESSAGE="[Oldest:$(oldest_file)] [Newest:$(newest_file)]"
+OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
+NEWEST_MESSAGE="[Newest:$(newest_file)]"
 fi
 
 ## Is there a file newer than min_age?
@@ -284,7 +285,7 @@ then
     newer_files_nb "${SEARCH_PATH}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
         RETURN_MESSAGE="${RETURN_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
@@ -298,7 +299,7 @@ then
     older_files_nb "${SEARCH_PATH}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
