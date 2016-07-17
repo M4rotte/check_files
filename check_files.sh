@@ -81,11 +81,11 @@ typeset -i NB_FILES  # not POSIX, unsupported by dash
 newest_file() {
 if ${RECURSIVE};
 then
-    NEWEST_FILE="$(find $1 -type f |xargs ls -aot | head -n 1)"
-    NEWER_FILES_NB="$(find $1 -type f -mmin -${MIN_AGE} |wc -l)"
+    NEWEST_FILE="$(find "$1" -type f -print0 |xargs -0 ls -aot | head -n 1)"
+    NEWER_FILES_NB=$(find "$1" -type f -mmin -${MIN_AGE} |wc -l)
 else
-    NEWEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -aot | head -n 1)"
-    NEWER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin -${MIN_AGE} |wc -l)"
+    NEWEST_FILE="$(find "$1"/* "$1"/.* -prune -type f -print0 |xargs -0 ls -aot | head -n 1)"
+    NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune -type f -mmin -${MIN_AGE} |wc -l)
 fi
 NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $5 " " $6 " " $7}')"
 NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $8}')"
@@ -95,11 +95,11 @@ NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $8}')"
 oldest_file() {
 if ${RECURSIVE};
 then
-    OLDEST_FILE="$(find $1 -type f |xargs ls -aort | head -n 1)"
-    OLDER_FILES_NB="$(find $1 -type f -mmin +${MAX_AGE} |wc -l)"
+    OLDEST_FILE="$(find "$1" -type f -print0 |xargs -0 ls -aort | head -n 1)"
+    OLDER_FILES_NB=$(find "$1" -type f -mmin +${MAX_AGE} |wc -l)
 else
-    OLDEST_FILE="$(find $1/* $1/.* -prune -type f |xargs ls -aort | head -n 1)"
-    OLDER_FILES_NB="$(find $1/* $1/.* -prune -type f -mmin +${MAX_AGE} |wc -l)"
+    OLDEST_FILE="$(find "$1"/* "$1"/.* -prune -type f -print0 |xargs -0 ls -aort | head -n 1)"
+    OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune -type f -mmin +${MAX_AGE} |wc -l)
 fi
 OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $5 " " $6 " " $7}')"
 OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $8}')"
