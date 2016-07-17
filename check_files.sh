@@ -7,10 +7,14 @@ set +x
 ## General behaviour
 VERBOSE=false
 VERBOSITY=0
-RETURN_CODE=3      # UNKNOWN : Default status if anything goes wrong past this line.
-ERROR_CODE=2       # CRITICAL : Default status on error (use option -W to set it to 1 (WARNING) instead)
-RECURSIVE=false    # Do not search in sub directories by default
-SEARCH_PATH=$HOME  # If not provided, search there...
+RETURN_CODE=3                # UNKNOWN : Status if anything goes wrong past this line.
+ERROR_CODE=2                 # CRITICAL : Status on error (use option -W to set it to 1 (WARNING) instead)
+SEARCH_PATH=$HOME            # If not provided, search there
+SEARCH_TYPE='f'              # Search this kind of file
+FIND_TYPE_CLAUSE=""          # Will store the type options for the find command
+RECURSIVE=false              # Do not search in sub directories 
+SEARCH_AGE=false             # Do not search for oldest and newest files
+SEARCH_SIZE=false            # Do not search for biggest and tiniest files
 RETURN_MESSAGE=""
 
 ## Age constraints
@@ -35,23 +39,42 @@ Check some properties on files in a given directory on POSIX systems.
 
 Returns OK, only if all the constraints are met.
 
-Usage: $(basename "$0") [-vhrW] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
+Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count] [-t filetype]
 
 
- -d/--dir         <path>   Directory to search files in (default: \$HOME)
- -r/--recursive            Search recursively (default: false) 
- -a/--min-age     <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
- -A/--max-age     <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
- -n/--min-count   <int>    Minimum number of files (default: ${MIN_COUNT})
- -N/--max-count   <int>    Maximum number of files (default: ${MAX_COUNT})
- -W/--warn-only            Return 1 (WARNING) instead of 2 (CRITICAL) on constraints violation
- -h/--help                 Show this help
- -v/--verbose              Verbose mode
+ -d/--dir        <path>   Directory to search files in (default: \$HOME)
+ -r/--recursive           Search recursively (default: $RECURSIVE)
+ -t/--file-type  <string> Type of file to search for (default: $SEARCH_TYPE)
+                          It may be any combination of the following letter:
+                            
+                            f : regular file
+                            d : directory
+                            l : symbolic link
+                            
+                          ex: 'fd' to search for files and directories.  
+                           
+ -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
+ -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
+ -n/--min-count  <int>    Minimum number of files (default: ${MIN_COUNT})
+ -N/--max-count  <int>    Maximum number of files (default: ${MAX_COUNT})
+ -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
+                          on constraints violation.
+                           
+ -h/--help                Show this help
+ -v/--verbose             Verbose mode
+ 
+ The following options have no effect on systems without GNU find.
+ 
+ -l/--search-age          Search for oldest and newest files. (default: $SEARCH_AGE)
+ -L/--search-size         Search for biggest and tiniest files. (default: $SEARCH_SIZE)
+                          Thoses searches can be particulary long if used
+                          in conjonction with -r (recursive).
 
 EOF
 };
 
-# Check if one provides "abc" as a numeric value...
+
+# Check if one provides "abc" as a numeric value
 is_int() {
     case "$1" in
         (*[!0-9]*|'')
@@ -61,60 +84,30 @@ is_int() {
     esac
 }
 
-# Count regular files
-nb_files() {
-if ${RECURSIVE}
-then
-    NB_FILES="$(find "$1" -type f |wc -l)"
-else    
-    NB_FILES="$(find "$1"/* "$1"/.* -prune -type f |wc -l)"
-fi
-typeset -i NB_FILES  2>/dev/null
-}
-
-# Count number of files newer than min-age
-newer_files_nb() {
-if ${RECURSIVE};
-then
-    NEWER_FILES_NB=$(find "$1" -type f -mmin -${MIN_AGE} |wc -l)
-else
-    NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune -type f -mmin -${MIN_AGE} |wc -l)
-fi
-typeset -i NEWER_FILES_NB 2>/dev/null
-}
-
-# Count number of files older than max-age
-older_files_nb() {
-if ${RECURSIVE};
-then
-    OLDER_FILES_NB=$(find "$1" -type f -mmin +${MAX_AGE} |wc -l)
-else
-    OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune -type f -mmin +${MAX_AGE} |wc -l)
-fi
-typeset -i OLDER_FILES_NB 2>/dev/null
-}
-
 # Arguments management #
 
 ## KISS way to handle long options
 for arg in "${@}"; do
   shift
   case "${arg}" in
-     ("--verbose")   set -- "${@}" "-v" ;;
-     ("--help")      set -- "${@}" "-h" ;;
-     ("--dir")       set -- "${@}" "-d" ;;
-     ("--min-age")   set -- "${@}" "-a" ;;
-     ("--max-age")   set -- "${@}" "-A" ;;
-     ("--min-count") set -- "${@}" "-n" ;;
-     ("--max-count") set -- "${@}" "-N" ;;
-     ("--recursive") set -- "${@}" "-r" ;;
-     ("--warn-only") set -- "${@}" "-W" ;;     
-     (*)             set -- "${@}" "${arg}"
+     ("--verbose")      set -- "${@}" "-v" ;;
+     ("--help")         set -- "${@}" "-h" ;;
+     ("--dir")          set -- "${@}" "-d" ;;
+     ("--min-age")      set -- "${@}" "-a" ;;
+     ("--max-age")      set -- "${@}" "-A" ;;
+     ("--min-count")    set -- "${@}" "-n" ;;
+     ("--max-count")    set -- "${@}" "-N" ;;
+     ("--recursive")    set -- "${@}" "-r" ;;
+     ("--file-type")    set -- "${@}" "-t" ;;
+     ("--warn-only")    set -- "${@}" "-W" ;;
+     ("--search-age")   set -- "${@}" "-l" ;;
+     ("--search-size")  set -- "${@}" "-L" ;;
+     (*)                set -- "${@}" "${arg}"
   esac
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:" opt; do
+while getopts "vWhd:ra:A:n:N:t:lL" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -139,6 +132,12 @@ while getopts "vWhd:ra:A:n:N:" opt; do
             ;;
         (r)
             RECURSIVE=true;
+            ;;
+        (l)
+            SEARCH_AGE=true;
+            ;;
+        (L)
+            SEARCH_SIZE=true;
             ;;
         (a)
             if ! is_int ${OPTARG};
@@ -180,6 +179,9 @@ while getopts "vWhd:ra:A:n:N:" opt; do
                 MAX_COUNT=${OPTARG};
             fi
             ;;
+        (t)
+            SEARCH_TYPE="${OPTARG}";
+            ;;
         (\?)
             printf "%s\n" "Unsupported option...";
             help_message;
@@ -189,19 +191,84 @@ while getopts "vWhd:ra:A:n:N:" opt; do
     esac
 done;
 
+# Check if we have the GNU implementation of find
+is_gnu_find() {
+    if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
+    then
+        true
+    else
+        false
+    fi    
+}
+
+# Prepare the type clause for find
+find_type_clause() {
+# We rewrite $SEARCH_TYPE so the order is always the same in the output    
+    case $1 in
+        (f)                       SEARCH_TYPE="f";  FIND_TYPE_CLAUSE=" -type f " ;;
+        (d)                       SEARCH_TYPE="d";  FIND_TYPE_CLAUSE=" -type d " ;;
+        (l)                       SEARCH_TYPE="l";  FIND_TYPE_CLAUSE=" -type l " ;;
+        (fd|df)                   SEARCH_TYPE="fd"; FIND_TYPE_CLAUSE=" -type f -o -type d " ;;
+        (fl|lf)                   SEARCH_TYPE="fl"; FIND_TYPE_CLAUSE=" -type f -o -type l " ;;
+        (ld|dl)                   SEARCH_TYPE="dl"; FIND_TYPE_CLAUSE=" -type l -o -type d " ;;
+        (fld|fdl|ldf|lfd|dfl|dlf)
+            SEARCH_TYPE="fdl"
+            FIND_TYPE_CLAUSE=" -type l -o -type d -o -type f "
+            ;;
+        (*)
+            (>&2 echo "Search type '${SEARCH_TYPE}' invalid, switching to 'f'.")                       
+            SEARCH_TYPE="f"; FIND_TYPE_CLAUSE=" -type f "
+        ;;
+    esac    
+}
+find_type_clause "${SEARCH_TYPE}"
+
+# Count regular files
+nb_files() {
+if ${RECURSIVE}
+then
+    NB_FILES="$(find "$1" ${FIND_TYPE_CLAUSE} |wc -l)"
+else    
+    NB_FILES="$(find "$1"/* "$1"/.* -prune ${FIND_TYPE_CLAUSE} |wc -l)"
+fi
+typeset -i NB_FILES  2>/dev/null
+}
+
+# Count number of files newer than min-age
+newer_files_nb() {
+if ${RECURSIVE};
+then
+    NEWER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
+else
+    NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
+fi
+typeset -i NEWER_FILES_NB 2>/dev/null
+}
+
+# Count number of files older than max-age
+older_files_nb() {
+if ${RECURSIVE};
+then
+    OLDER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
+else
+    OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
+fi
+typeset -i OLDER_FILES_NB 2>/dev/null
+}
+
 # Main script #
 
-## Recursive?
+## Tag
 if $RECURSIVE
 then 
-    tag='(R)'
+    tag="(R${SEARCH_TYPE})"
 else 
-    tag=''
+    tag="(${SEARCH_TYPE})"
 fi
 
+## Is there a file newer than min_age?
 if [ $MIN_AGE -gt 0 ]
 then
-    ## Is there a file newer than min_age?
     newer_files_nb "${SEARCH_PATH}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
@@ -213,9 +280,9 @@ then
     fi
 fi
 
+## Is there a file older than max_age?
 if [ $MAX_AGE -gt -1 ]
 then
-    ## Is there a file older than max_age?
     older_files_nb "${SEARCH_PATH}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
@@ -230,9 +297,9 @@ fi
 nb_files "${SEARCH_PATH}"
 
 
+## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
 then
-    ## Is there too many files?
     if [ ${NB_FILES} -gt ${MAX_COUNT} ]
     then
         RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
@@ -243,9 +310,9 @@ then
     fi
 fi
 
+## Is there not enough files?
 if [ $MIN_COUNT -gt 0 ]
 then
-    ## Is there not enough files?
     if [ ${NB_FILES} -lt ${MIN_COUNT} ]
     then
         RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
@@ -260,9 +327,9 @@ fi
 ## Return 0 (OK) and a gentle & convenient message
 if [ ${NB_FILES} -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files"
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files ${tag}"
 else
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - No regular file"
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - No file ${tag}"
 fi    
 RETURN_CODE=0
 printf "%s\n" "${RETURN_MESSAGE}"
