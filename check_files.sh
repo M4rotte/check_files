@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-##!/bin/bash --posix # dash has no typeset...
 
 set +x
 
@@ -17,13 +16,9 @@ RETURN_MESSAGE=""
 ## Age constraints
 MIN_AGE=0          # By default, catch any file...
 NEWER_FILES_NB=0
-NEWEST_FILE_NAME=""
-NEWEST_FILE_DATE=""
 
 MAX_AGE=10512000   # ~20 years, TODO: permit -1 for no max
 OLDER_FILES_NB=0
-OLDEST_FILE_NAME=""
-OLDEST_FILE_DATE=""
 
 ## Count constraints
 MIN_COUNT=0
@@ -70,39 +65,33 @@ is_int() {
 nb_files() {
 if ${RECURSIVE}
 then
-    NB_FILES="$(find "$SEARCH_PATH" -type f |wc -l)"
+    NB_FILES="$(find "$1" -type f |wc -l)"
 else    
-    NB_FILES="$(find "$SEARCH_PATH"/* "$SEARCH_PATH"/.* -prune -type f |wc -l)"
+    NB_FILES="$(find "$1"/* "$1"/.* -prune -type f |wc -l)"
 fi
-typeset -i NB_FILES  # not POSIX, unsupported by dash    
+typeset -i NB_FILES  2>/dev/null
 }
 
-# Find the newest file
-newest_file() {
+# Count number of files newer than min-age
+newer_files_nb() {
 if ${RECURSIVE};
 then
-    NEWEST_FILE="$(find "$1" -type f -print0 |xargs -0 ls -aot | head -n 1)"
     NEWER_FILES_NB=$(find "$1" -type f -mmin -${MIN_AGE} |wc -l)
 else
-    NEWEST_FILE="$(find "$1"/* "$1"/.* -prune -type f -print0 |xargs -0 ls -aot | head -n 1)"
     NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune -type f -mmin -${MIN_AGE} |wc -l)
 fi
-NEWEST_FILE_DATE="$(echo "$NEWEST_FILE" |awk '{print $5 " " $6 " " $7}')"
-NEWEST_FILE_NAME="$(echo "$NEWEST_FILE" |awk '{print $8}')"
+typeset -i NEWER_FILES_NB 2>/dev/null
 }
 
-# Find the oldest file
-oldest_file() {
+# Count number of files older than max-age
+older_files_nb() {
 if ${RECURSIVE};
 then
-    OLDEST_FILE="$(find "$1" -type f -print0 |xargs -0 ls -aort | head -n 1)"
     OLDER_FILES_NB=$(find "$1" -type f -mmin +${MAX_AGE} |wc -l)
 else
-    OLDEST_FILE="$(find "$1"/* "$1"/.* -prune -type f -print0 |xargs -0 ls -aort | head -n 1)"
     OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune -type f -mmin +${MAX_AGE} |wc -l)
 fi
-OLDEST_FILE_DATE="$(echo "$OLDEST_FILE" |awk '{print $5 " " $6 " " $7}')"
-OLDEST_FILE_NAME="$(echo "$OLDEST_FILE" |awk '{print $8}')"
+typeset -i OLDER_FILES_NB 2>/dev/null
 }
 
 # Arguments management #
@@ -211,31 +200,28 @@ else
 fi
 
 ## Is there a file newer than min_age?
-newest_file "${SEARCH_PATH}";
+newer_files_nb "${SEARCH_PATH}";
 if [ ${NEWER_FILES_NB} -gt 0 ]
 then
-    typeset -i NEWER_FILES_NB; # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} - ${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE})"
+    RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}"
+    RETURN_MESSAGE="${RETURN_MESSAGE}"
     RETURN_CODE=${ERROR_CODE}
     printf "%s\n" "${RETURN_MESSAGE}"
     exit ${RETURN_CODE}
 fi
 
 ## Is there a file older than max_age?
-oldest_file "${SEARCH_PATH}"
+older_files_nb "${SEARCH_PATH}"
 if [ ${OLDER_FILES_NB} -gt 0 ]
 then
-    typeset -i OLDER_FILES_NB # not POSIX, unsupported by dash
-    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in "
-    RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag} - ${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE})"
+    RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}"
     RETURN_CODE=${ERROR_CODE}
     printf "%s\n" "${RETURN_MESSAGE}"
     exit ${RETURN_CODE}
 fi
 
 ## Count regular files
-nb_files
+nb_files "${SEARCH_PATH}"
 
 ## Is there too many files?
 if [ ${NB_FILES} -gt ${MAX_COUNT} ]
@@ -261,7 +247,7 @@ fi
 ## Return 0 (OK) and a gentle & convenient message
 if [ ${NB_FILES} -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${OLDEST_FILE_NAME} (${OLDEST_FILE_DATE}) > ${NEWEST_FILE_NAME} (${NEWEST_FILE_DATE}) - ${NB_FILES} files"
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files"
 else
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - No regular file"
 fi    
