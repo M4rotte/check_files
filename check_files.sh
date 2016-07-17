@@ -184,7 +184,7 @@ while getopts "vWhd:ra:A:n:N:" opt; do
         (N)
             if ! is_int ${OPTARG};
             then
-                printf "\n%s\N" "Option -A expects a positive integer number as argument."
+                printf "\n%s\N" "Option -N expects a positive integer number as argument."
                 RETURN_CODE=3;
                 exit ${RETURN_CODE};
             else
