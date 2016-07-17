@@ -1,0 +1,217 @@
+LS(1)                                                                             Commandes                                                                             LS(1)
+
+NNOOMM
+       ls - Afficher le contenu de répertoires
+
+SSYYNNOOPPSSIISS
+       llss [_O_P_T_I_O_N] ... [_F_I_C_H_I_E_R] ...
+
+DDEESSCCRRIIPPTTIIOONN
+       Afficher  les  informations  des _F_I_C_H_I_E_Rs (du répertoire courant par défaut). Les entrées sont triées alphabétiquement si aucune des options --ccffttuuvvSSUUXX ou ----ssoorrtt n'est
+       indiquée.
+
+       Les paramètres obligatoires pour les options de forme longue le sont aussi pour les options de forme courte.
+
+       --aa, ----aallll
+              inclure les entrées débutant par « . »
+
+       --AA, ----aallmmoosstt--aallll
+              omettre les fichiers « . » et « .. »
+
+       ----aauutthhoorr
+              avec --ll, afficher l'auteur de chaque fichier
+
+       --bb, ----eessccaappee
+              afficher les caractères non graphiques sous la forme C déspécifiée
+
+       ----bblloocckk--ssiizzee=_T_A_I_L_L_E
+              utiliser cette _T_A_I_L_L_E de bloc pour l'affichage. Par exemple « --block-size=M » affichera les volumes en unités de  1 048 576 octets.  Consultez  le  format  de
+              _T_A_I_L_L_E ci-dessous
+
+       --BB, ----iiggnnoorree--bbaacckkuuppss
+              omettre les entrées se terminant par « ~ »
+
+       --cc     avec  --lltt,  trier selon la date de modification « ctime » en l'affichant ; avec --ll, trier selon le nom et afficher la date de modification ; sinon, trier selon
+              la date de modification, de la plus récente à la plus ancienne
+
+       --CC     afficher en colonnes
+
+       ----ccoolloorr[=_P_A_R_A_M_È_T_R_E]
+              colorer la sortie. _P_A_R_A_M_È_T_R_E peut être « never » (jamais), « auto » (automatique) ou « always » (toujours, valeur par défaut) ; des  renseignements  complémen‐
+              taires suivent ci-dessous
+
+       --dd, ----ddiirreeccttoorryy
+              afficher les noms de répertoires eux-mêmes, pas leur contenu
+
+       --DD, ----ddiirreedd
+              créer une sortie adaptée au mode « dired » d'Emacs
+
+       --ff     ne pas trier, activer les options --aaUU et désactiver les options --llss ----ccoolloorr
+
+       --FF, ----ccllaassssiiffyy
+              ajouter un caractère (parmi « */=>@| ») à chaque entrée
+
+       ----ffiillee--ttyyppee
+              similaire, mais sans ajouter « * »
+
+       ----ffoorrmmaatt=_M_O_D_E
+              afficher selon le MODE across --xx, commas --mm, horizontal --xx, long --ll, single-column --11, verbose --ll ou vertical --CC
+
+       ----ffuullll--ttiimmee
+              identique à --ll ----ttiimmee--ssttyyllee=_f_u_l_l_-_i_s_o
+
+       --gg     identique à --ll mais sans afficher le propriétaire
+
+       ----ggrroouupp--ddiirreeccttoorriieess--ffiirrsstt
+              regrouper les répertoires avant les fichiers ;
+
+              peut être renforcé avec l'option ----ssoorrtt, mais l'utilisation de ----ssoorrtt==nnoonnee (--UU) désactive le regroupement
+
+       --GG, ----nnoo--ggrroouupp
+              ne pas afficher le nom des groupes dans un format d'affichage long
+
+       --hh, ----hhuummaann--rreeaaddaabbllee
+              avec --ll ou --ss, afficher les tailles en format lisible (par exemple 1K, 234M ou 2G)
+
+       ----ssii   équivalent, en utilisant des puissances de 1000 et non de 1024
+
+       --HH, ----ddeerreeffeerreennccee--ccoommmmaanndd--lliinnee
+              suivre les liens symboliques de la ligne de commande
+
+       ----ddeerreeffeerreennccee--ccoommmmaanndd--lliinnee--ssyymmlliinnkk--ttoo--ddiirr
+              suivre tous les liens symboliques en ligne de commande
+
+              qui pointent vers un répertoire
+
+       ----hhiiddee==_M_O_T_I_F
+              ne pas afficher les entrées implicites correspondant au _M_O_T_I_F de l'interpréteur de commandes (écrasé par --aa ou --AA)
+
+       ----iinnddiiccaattoorr--ssttyyllee==_S_T_Y_L_E
+              ajouter au nom des entrées l'indicateur de _S_T_Y_L_E : none (aucun, par défaut), slash (--pp), file-type (----ffiillee--ttyyppee) ou classify (--FF)
+
+       --ii, ----iinnooddee
+              afficher le numéro d'index de chaque fichier
+
+       --II, ----iiggnnoorree=_M_O_T_I_F
+              ne pas afficher les entrées implicites correspondant au _M_O_T_I_F de l'interpréteur de commandes
+
+       --kk, ----kkiibbiibbyytteess
+              blocs de 1024 octets par défaut pour l’occupation d’espace disque
+
+       --ll     utiliser un format d'affichage long
+
+       --LL, ----ddeerreeffeerreennccee
+              lors de l'affichage des entrées pointées par des liens symboliques, afficher les informations du fichier pointé par le lien plutôt que celles du lien lui-même
+
+       --mm     remplir la largeur par une liste d'entrées séparée par des virgules
+
+       --nn, ----nnuummeerriicc--uuiidd--ggiidd
+              identique à --ll mais en affichant les valeurs numériques des identifiants du propriétaire (UID) et du groupe (GID)
+
+       --NN, ----lliitteerraall
+              afficher les noms bruts des entrées (par exemple, ne pas traiter de manière particulière les caractères de contrôle)
+
+       --oo     identique à --ll, mais sans afficher l'information de groupe
+
+       --pp, ----iinnddiiccaattoorr--ssttyyllee=_s_l_a_s_h
+              ajouter l'indicateur « / » aux répertoires
+
+       --qq, ----hhiiddee--ccoonnttrrooll--cchhaarrss
+              afficher « ? » à la place des caractères non graphiques
+
+       ----sshhooww--ccoonnttrrooll--cchhaarrss
+              afficher les caractères non graphiques tels quels (comportement par défaut, à moins que le programme ne soit « ls » et la sortie un terminal)
+
+       --QQ, ----qquuoottee--nnaammee
+              mettre les noms d'entrées entre guillemets
+
+       ----qquuoottiinngg--ssttyyllee=_M_O_T___C_L_É
+              utiliser le style d'encapsulation selon le MOT_CLÉ literal, locale, shell, shell-always, c ou escape
+
+       --rr, ----rreevveerrssee
+              inverser l'ordre du tri
+
+       --RR, ----rreeccuurrssiivvee
+              afficher récursivement les sous-répertoires
+
+       --ss, ----ssiizzee
+              afficher la taille allouée de chaque fichier en nombre de blocs
+
+       --SS     trier selon la taille des fichiers
+
+       ----ssoorrtt==_M_O_D_E
+              trier selon le _M_O_D_E plutôt que selon le nom : none (aucun, --UU), size (taille, --SS),  time (heure, --tt), version (--vv), extension (--XX)
+
+       ----ttiimmee==_M_O_D_E
+              avec  --ll, afficher la date selon le _M_O_D_E au lieu de la date de modification par défaut : atime, access, use (--uu), ctime, ou status (--cc), tel qu'indiqué dans la
+              clé de tri ----ssoorrtt==ttiimmee
+
+       ----ttiimmee--ssttyyllee==_S_T_Y_L_E
+              avec --ll, afficher les dates selon le _S_T_Y_L_E désiré : full-iso, long-iso, iso, locale ou ++_F_O_R_M_A_T ; le _F_O_R_M_A_T est interprété comme dans « date » ; si _F_O_R_M_A_T  vaut
+              _F_O_R_M_A_T_1<changement de ligne>_F_O_R_M_A_T_2, alors _F_O_R_M_A_T_1 s'applique aux fichiers anciens et _F_O_R_M_A_T_2 aux fichiers récents ; si _S_T_Y_L_E est préfixé par « posix- », _S_T_Y_L_E
+              ne prend effet qu'en dehors de des paramètres régionaux POSIX.
+
+       --tt     trier selon la date de modification, de la plus récente à la plus ancienne
+
+       --TT, ----ttaabbssiizzee=_C_O_L_O_N_N_E_S
+              définir l'espacement des tabulations à COLONNES plutôt qu'à 8
+
+       --uu     avec --lltt, trier et afficher selon la date de dernier accès ; avec --ll, afficher la date de dernier d'accès et trier par nom ; dans les autres cas,  trier  selon
+              la date de dernier accès
+
+       --UU     ne pas trier, afficher selon l'ordre original des entrées du répertoire
+
+       --vv     tri naturel des numéros (de version) dans le texte
+
+       --ww, ----wwiiddtthh=_C_O_L_O_N_N_E_S
+              fixer la largeur de l'écran à COLONNES
+
+       --xx     afficher les entrées par ligne plutôt que par colonne
+
+       --XX     trier alphabétiquement selon l'extension des entrées
+
+       --ZZ, ----ccoonntteexxtt
+              afficher tout contexte de sécurité de chaque fichier
+
+       --11     afficher un fichier par ligne
+
+       ----hheellpp Afficher l'aide-mémoire et quitter
+
+       ----vveerrssiioonn
+              Afficher le nom et la version du logiciel et quitter
+
+       L’argument  _T_A_I_L_L_E  est  un  entier suivi d'une unité facultative (10k pour 10×1024 par exemple). Les unités sont K, M, G, T, P, E, Z et Y (puissances de 1024) ou KB,
+       MB, etc. (puissances de 1000).
+
+       La couleur n'est pas utilisée pour distinguer les différents types de fichiers par défaut ou avec l'option ----ccoolloorr=_n_e_v_e_r. Avec l'option ----ccoolloorr=_a_u_t_o, ls n'utilise des
+       codes  couleur  que  si la sortie standard est reliée à un terminal. La variable d'environnement LS_COLORS peut avoir un impact sur la configuration. Utilisez la com‐
+       mande dircolors pour la définir.
+
+   ÉÉttaatt ddee ffiinn dd''eexxééccuuttiioonn ::
+       0      si OK,
+
+       1      si problèmes mineurs (par exemple, impossible d'accéder à un sous-répertoire),
+
+       2      si erreur grave (par exemple, impossible d'accéder aux paramètres de la ligne de commande).
+
+AAUUTTEEUURR
+       Écrit par Richard M. Stallman et David MacKenzie.
+
+SSIIGGNNAALLEERR DDEESS BBOOGGUUEESS
+       Aide en ligne de GNU coreutils : <_h_t_t_p_:_/_/_w_w_w_._g_n_u_._o_r_g_/_s_o_f_t_w_a_r_e_/_c_o_r_e_u_t_i_l_s_/>
+       Signaler toute erreur de traduction de ls à <_h_t_t_p_:_/_/_t_r_a_n_s_l_a_t_i_o_n_p_r_o_j_e_c_t_._o_r_g_/_t_e_a_m_/>
+
+CCOOPPYYRRIIGGHHTT
+       Copyright © 2014 Free Software Foundation, Inc. Licence GPLv3+ : GNU GPL version 3 ou supérieures <http://gnu.org/licenses/gpl.html>
+       Ce programme est un logiciel libre. Vous pouvez le modifier et le redistribuer. Il n'y a AUCUNE GARANTIE dans la mesure autorisée par la loi.
+
+VVOOIIRR AAUUSSSSII
+       Documentation complète : <_h_t_t_p_:_/_/_w_w_w_._g_n_u_._o_r_g_/_s_o_f_t_w_a_r_e_/_c_o_r_e_u_t_i_l_s_/_l_s>
+       aussi disponible localement à l’aide de la commande : info '(coreutils) ls invocation'
+
+TTRRAADDUUCCTTIIOONN
+       Cette page de manuel a été traduite par Michel Robitaille <robitail AT iro DOT umontreal DOT ca> et mise à jour pour Debian par Jean-Luc Coulon (f5ibh) <jean-luc  DOT
+       coulon  AT wanadoo DOT fr> et les membres de la liste <debian-l10n-french AT lists DOT debian DOT org>. Veuillez signaler toute erreur de traduction par un rapport de
+       bogue sur le paquet manpages-fr-extra.
+
+GNU coreutils 8.23                                                               octobre 2014                                                                           LS(1)

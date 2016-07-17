@@ -40,7 +40,7 @@ Check some properties on files in a given directory on POSIX systems.
 
 Returns OK, only if all the constraints are met.
 
-Usage: $(basename "$0") [-h]
+Usage: $(basename "$0") [-vhrW] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
 
 
  -d/--dir         <path>   Directory to search files in (default: \$HOME)
