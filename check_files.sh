@@ -20,7 +20,6 @@ RETURN_MESSAGE=""
 ## Age constraints
 MIN_AGE=0
 NEWER_FILES_NB=0
-
 MAX_AGE=-1
 OLDER_FILES_NB=0
 
@@ -66,7 +65,7 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
  The following options have no effect on systems without GNU find.
  
  -l/--search-age          Search for oldest and newest files. (default: $SEARCH_AGE)
- -L/--search-size         Search for biggest and tiniest files. (default: $SEARCH_SIZE)
+ -L/--search-size         Search for biggest and smallest files. (default: $SEARCH_SIZE)
                           Thoses searches can be particulary long if used
                           in conjonction with -r (recursive).
 
@@ -197,12 +196,12 @@ find_type_clause() {
         (f)                       SEARCH_TYPE="f";  FIND_TYPE_CLAUSE=" -type f " ;;
         (d)                       SEARCH_TYPE="d";  FIND_TYPE_CLAUSE=" -type d " ;;
         (l)                       SEARCH_TYPE="l";  FIND_TYPE_CLAUSE=" -type l " ;;
-        (fd|df)                   SEARCH_TYPE="fd"; FIND_TYPE_CLAUSE=" -type f -o -type d " ;;
-        (fl|lf)                   SEARCH_TYPE="fl"; FIND_TYPE_CLAUSE=" -type f -o -type l " ;;
-        (ld|dl)                   SEARCH_TYPE="dl"; FIND_TYPE_CLAUSE=" -type l -o -type d " ;;
+        (fd|df)                   SEARCH_TYPE="fd"; FIND_TYPE_CLAUSE=" ( -type f -o -type d ) " ;;
+        (fl|lf)                   SEARCH_TYPE="fl"; FIND_TYPE_CLAUSE=" ( -type f -o -type l ) " ;;
+        (ld|dl)                   SEARCH_TYPE="dl"; FIND_TYPE_CLAUSE=" ( -type l -o -type d ) " ;;
         (fld|fdl|ldf|lfd|dfl|dlf)
             SEARCH_TYPE="fdl"
-            FIND_TYPE_CLAUSE=" -type l -o -type d -o -type f "
+            FIND_TYPE_CLAUSE=" ( -type l -o -type d -o -type f ) "
             ;;
         (*)
             (>&2 echo "Search type '${SEARCH_TYPE}' invalid, switching to 'f'.")                       
@@ -212,7 +211,7 @@ find_type_clause() {
 }
 find_type_clause "${SEARCH_TYPE}"
 
-# Count regular files
+# Count files
 nb_files() {
 if ${RECURSIVE}
 then
@@ -265,18 +264,46 @@ else
     tag="(${SEARCH_TYPE})"
 fi
 
+# Effective search path
+
+if $RECURSIVE
+then
+    search="$SEARCH_PATH"
+else
+    search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
+fi 
+
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    firstlast=$(find $SEARCH_PATH $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%s kB\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print $3 " (" $4 ") " $2} END{print $3 " (" $4 ") " $2}')
+    #~ cat <<EOF
+#~ find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}'
+#~ EOF
+    firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
     }
     newest_file() {
     printf "$firstlast\n" |tail -1
     }
-OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
-NEWEST_MESSAGE="[Newest:$(newest_file)]"
+    OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
+    NEWEST_MESSAGE="[Newest:$(newest_file)]"
+    OLDNEW_MESSAGE="${OLDEST_MESSAGE}${NEWEST_MESSAGE}"
+fi
+
+# Search for smallest and biggest files
+if is_gnu_find && $SEARCH_SIZE
+then
+    firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%s;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    smallest_file() {
+    printf "$firstlast\n" |head -1
+    }
+    biggest_file() {
+    printf "$firstlast\n" |tail -1
+    }
+    SMALLEST_MESSAGE="[Smallest:$(smallest_file)]"
+    BIGGEST_MESSAGE="[Biggest:$(biggest_file)]"
+    SMALLBIG_MESSAGE="${SMALLEST_MESSAGE}${BIGGEST_MESSAGE}"
 fi
 
 ## Is there a file newer than min_age?
@@ -306,7 +333,7 @@ then
     fi
 fi
 
-## Count regular files
+## Count files
 nb_files "${SEARCH_PATH}"
 
 ## Is there too many files?
@@ -315,35 +342,33 @@ then
     if [ ${NB_FILES} -gt ${MAX_COUNT} ]
     then
         RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
 
-## Is there not enough files?
+## Is there too few files?
 if [ $MIN_COUNT -gt 0 ]
 then
     if [ ${NB_FILES} -lt ${MIN_COUNT} ]
     then
         RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
 
-
-
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
-if [ ${NB_FILES} -gt 0 ]
+if [ $NB_FILES -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files ${tag} ${OLDNEW_MESSAGE}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
 else
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - No file ${tag}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag}"
 fi    
 RETURN_CODE=0
 printf "%s\n" "${RETURN_MESSAGE}"
