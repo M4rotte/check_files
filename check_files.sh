@@ -73,8 +73,7 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
 EOF
 };
 
-
-# Check if one provides "abc" as a numeric value
+# Check for positive integer
 is_int() {
     case "$1" in
         (*[!0-9]*|'')
@@ -191,16 +190,6 @@ while getopts "vWhd:ra:A:n:N:t:lL" opt; do
     esac
 done;
 
-# Check if we have the GNU implementation of find
-is_gnu_find() {
-    if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
-    then
-        true
-    else
-        false
-    fi    
-}
-
 # Prepare the type clause for find
 find_type_clause() {
 # We rewrite $SEARCH_TYPE so the order is always the same in the output    
@@ -256,14 +245,38 @@ fi
 typeset -i OLDER_FILES_NB 2>/dev/null
 }
 
+# Check if we have the GNU implementation of find
+is_gnu_find() {
+    if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
+    then
+        true
+    else
+        false
+    fi    
+}
+
 # Main script #
 
-## Tag
+## Search type tag
 if $RECURSIVE
 then 
     tag="(R${SEARCH_TYPE})"
 else 
     tag="(${SEARCH_TYPE})"
+fi
+
+# Search for oldest and newest files
+if is_gnu_find && $SEARCH_AGE
+then
+    firstlast=$(find $SEARCH_PATH $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%s kB\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print $3 " (" $4 ") " $2} END{print $3 " (" $4 ") " $2}')
+    oldest_file() {
+    printf "$firstlast\n" |head -1
+    }
+    newest_file() {
+    printf "$firstlast\n" |tail -1
+    }
+OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
+NEWEST_MESSAGE="[Newest:$(newest_file)]"
 fi
 
 ## Is there a file newer than min_age?
@@ -272,7 +285,7 @@ then
     newer_files_nb "${SEARCH_PATH}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
         RETURN_MESSAGE="${RETURN_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
@@ -286,7 +299,7 @@ then
     older_files_nb "${SEARCH_PATH}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}"
+        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
@@ -295,7 +308,6 @@ fi
 
 ## Count regular files
 nb_files "${SEARCH_PATH}"
-
 
 ## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
@@ -323,11 +335,13 @@ then
     fi
 fi
 
+
+
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
 if [ ${NB_FILES} -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files ${tag}"
+    RETURN_MESSAGE="${SEARCH_PATH}${tag} - ${NB_FILES} files ${tag} ${OLDNEW_MESSAGE}"
 else
     RETURN_MESSAGE="${SEARCH_PATH}${tag} - No file ${tag}"
 fi    
