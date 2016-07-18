@@ -27,6 +27,16 @@ OLDER_FILES_NB=0
 MIN_COUNT=0
 MAX_COUNT=-1
 
+## File size constraints
+MIN_SIZE=0
+SMALLER_FILES_NB=0
+MAX_SIZE=-1
+BIGGER_FILES_NB=0
+
+## Disk usage constraints
+MIN_USAGE=0
+MAX_USAGE=-1
+
 # Help message
 
 help_message() {
@@ -38,24 +48,30 @@ Check some properties on files in a given directory on POSIX systems.
 
 Returns OK, only if all the constraints are met.
 
-Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count] [-t filetype]
+Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
+                        [-s min-size] [-S max-size] [-u min-usage] [-U max-usage]
+                        [-t filetype]
 
 
  -d/--dir        <path>   Directory to search files in (default: \$HOME)
  -r/--recursive           Search recursively (default: $RECURSIVE)
  -t/--file-type  <string> Type of file to search for (default: $SEARCH_TYPE)
-                          It may be any combination of the following letter:
+                          It may be any combination of the following letters:
                             
                             f : regular file
                             d : directory
                             l : symbolic link
                             
-                          ex: 'fd' to search for files and directories.  
+                          ex: 'fd' to search for regular files and directories.  
                            
  -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
  -n/--min-count  <int>    Minimum number of files (default: ${MIN_COUNT})
  -N/--max-count  <int>    Maximum number of files (default: ${MAX_COUNT})
+ -s/--min-size   <int>    Minimum size of each file in kB (default: ${MIN_SIZE})
+ -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE})
+ -u/--min-usage  <int>    Minimum disk usage in kB (default: ${MIN_USAGE})
+ -U/--max-usage  <int>    Maximum disk usage in kB (default: ${MAX_USAGE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
                            
@@ -95,6 +111,10 @@ for arg in "${@}"; do
      ("--max-age")      set -- "${@}" "-A" ;;
      ("--min-count")    set -- "${@}" "-n" ;;
      ("--max-count")    set -- "${@}" "-N" ;;
+     ("--min-size")     set -- "${@}" "-s" ;;
+     ("--max-size")     set -- "${@}" "-S" ;;
+     ("--min-usage")    set -- "${@}" "-s" ;;
+     ("--max-usage")    set -- "${@}" "-S" ;;
      ("--recursive")    set -- "${@}" "-r" ;;
      ("--file-type")    set -- "${@}" "-t" ;;
      ("--warn-only")    set -- "${@}" "-W" ;;
@@ -105,7 +125,7 @@ for arg in "${@}"; do
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:t:lL" opt; do
+while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -170,11 +190,51 @@ while getopts "vWhd:ra:A:n:N:t:lL" opt; do
         (N)
             if ! is_int ${OPTARG};
             then
-                printf "\n%s\N" "Option -N expects a positive integer number as argument."
+                printf "\n%s\n" "Option -N expects a positive integer number as argument."
                 RETURN_CODE=3;
                 exit ${RETURN_CODE};
             else
                 MAX_COUNT=${OPTARG};
+            fi
+            ;;
+        (s)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -s expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MIN_SIZE=${OPTARG};
+            fi
+            ;;
+        (S)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -S expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MAX_SIZE=${OPTARG};
+            fi
+            ;;
+        (u)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -u expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MIN_USAGE=${OPTARG};
+            fi
+            ;;
+        (U)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -U expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MAX_USAGE=${OPTARG};
             fi
             ;;
         (t)
@@ -213,35 +273,39 @@ find_type_clause "${SEARCH_TYPE}"
 
 # Count files
 nb_files() {
-if ${RECURSIVE}
-then
-    NB_FILES="$(find "$1" ${FIND_TYPE_CLAUSE} |wc -l)"
-else    
-    NB_FILES="$(find "$1"/* "$1"/.* -prune ${FIND_TYPE_CLAUSE} |wc -l)"
-fi
-typeset -i NB_FILES  2>/dev/null
+    NB_FILES=$(find $1 ${FIND_TYPE_CLAUSE} |wc -l)
+    typeset -i NB_FILES  2>/dev/null
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
-if ${RECURSIVE};
-then
-    NEWER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
-else
-    NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
-fi
-typeset -i NEWER_FILES_NB 2>/dev/null
+    NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin -${MIN_AGE} |wc -l)
+    typeset -i NEWER_FILES_NB 2>/dev/null
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-if ${RECURSIVE};
-then
-    OLDER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
-else
-    OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
-fi
-typeset -i OLDER_FILES_NB 2>/dev/null
+    OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin +${MAX_AGE} |wc -l)
+    typeset -i OLDER_FILES_NB 2>/dev/null
+}
+
+# Count number of files smaller than min-size
+smaller_files_nb() {
+    SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size -${MIN_SIZE}k |wc -l)
+    typeset -i SMALLER_FILES_NB 2>/dev/null
+}
+
+# Count number of files bigger than max-size
+bigger_files_nb() {
+    BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size +${MAX_SIZE}k |wc -l)
+    typeset -i BIGGER_FILES_NB 2>/dev/null
+}
+
+# Measure disk usage
+
+disk_usage() {
+    DISK_USAGE=$(du -sk ${SEARCH_PATH} |cut -f1)
+    typeset -i DISK_USAGE 2>/dev/null
 }
 
 # Check if we have the GNU implementation of find
@@ -256,29 +320,19 @@ is_gnu_find() {
 
 # Main script #
 
-## Search type tag
+## Recursive?
 if $RECURSIVE
 then 
     tag="(R${SEARCH_TYPE})"
+    search="$SEARCH_PATH"
 else 
     tag="(${SEARCH_TYPE})"
-fi
-
-# Effective search path
-
-if $RECURSIVE
-then
-    search="$SEARCH_PATH"
-else
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
-fi 
+fi
 
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    #~ cat <<EOF
-#~ find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}'
-#~ EOF
     firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
@@ -309,7 +363,7 @@ fi
 ## Is there a file newer than min_age?
 if [ $MIN_AGE -gt 0 ]
 then
-    newer_files_nb "${SEARCH_PATH}";
+    newer_files_nb "${search}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
@@ -323,7 +377,7 @@ fi
 ## Is there a file older than max_age?
 if [ $MAX_AGE -gt -1 ]
 then
-    older_files_nb "${SEARCH_PATH}"
+    older_files_nb "${search}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
@@ -334,7 +388,7 @@ then
 fi
 
 ## Count files
-nb_files "${SEARCH_PATH}"
+nb_files "${search}"
 
 ## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
@@ -362,11 +416,66 @@ then
     fi
 fi
 
+## Is there files which are too big?
+if [ $MAX_SIZE -gt -1 ]
+then
+    bigger_files_nb "${search}"
+    if [ ${BIGGER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
+fi
+
+## Is there files which are too small?
+if [ $MIN_SIZE -gt 0 ]
+then
+    smaller_files_nb "${search}"
+    if [ ${SMALLER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
+fi
+
+# Measure disk usage
+disk_usage
+
+## Is there too much space used?
+if [ $MAX_USAGE -gt -1 ]
+then
+    if [ $DISK_USAGE -gt $MAX_USAGE ]
+    then
+        RETURN_MESSAGE="${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}    
+    fi    
+fi
+
+## Is there too few space used?
+if [ $MIN_USAGE -gt 0 ]
+then
+    if [ $DISK_USAGE -lt $MIN_USAGE ]
+    then
+        RETURN_MESSAGE="${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}    
+    fi    
+fi
+
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
 if [ $NB_FILES -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB) ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
 else
     RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag}"
 fi    
