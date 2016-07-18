@@ -27,6 +27,12 @@ OLDER_FILES_NB=0
 MIN_COUNT=0
 MAX_COUNT=-1
 
+## File size constraints
+MIN_SIZE=0
+SMALLER_FILES_NB=0
+MAX_SIZE=-1
+BIGGER_FILES_NB=0
+
 # Help message
 
 help_message() {
@@ -38,13 +44,14 @@ Check some properties on files in a given directory on POSIX systems.
 
 Returns OK, only if all the constraints are met.
 
-Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count] [-t filetype]
+Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
+                        [-s min-size] [-S max-size] [-t filetype]
 
 
  -d/--dir        <path>   Directory to search files in (default: \$HOME)
  -r/--recursive           Search recursively (default: $RECURSIVE)
  -t/--file-type  <string> Type of file to search for (default: $SEARCH_TYPE)
-                          It may be any combination of the following letter:
+                          It may be any combination of the following letters:
                             
                             f : regular file
                             d : directory
@@ -56,6 +63,8 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
  -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
  -n/--min-count  <int>    Minimum number of files (default: ${MIN_COUNT})
  -N/--max-count  <int>    Maximum number of files (default: ${MAX_COUNT})
+ -s/--min-size   <int>    Minimum size of each file in kB (default: ${MIN_SIZE})
+ -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
                            
@@ -95,6 +104,8 @@ for arg in "${@}"; do
      ("--max-age")      set -- "${@}" "-A" ;;
      ("--min-count")    set -- "${@}" "-n" ;;
      ("--max-count")    set -- "${@}" "-N" ;;
+     ("--min-size")     set -- "${@}" "-s" ;;
+     ("--max-size")     set -- "${@}" "-S" ;;
      ("--recursive")    set -- "${@}" "-r" ;;
      ("--file-type")    set -- "${@}" "-t" ;;
      ("--warn-only")    set -- "${@}" "-W" ;;
@@ -105,7 +116,7 @@ for arg in "${@}"; do
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:t:lL" opt; do
+while getopts "vWhd:ra:A:n:N:s:S:t:lL" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -170,11 +181,31 @@ while getopts "vWhd:ra:A:n:N:t:lL" opt; do
         (N)
             if ! is_int ${OPTARG};
             then
-                printf "\n%s\N" "Option -N expects a positive integer number as argument."
+                printf "\n%s\n" "Option -N expects a positive integer number as argument."
                 RETURN_CODE=3;
                 exit ${RETURN_CODE};
             else
                 MAX_COUNT=${OPTARG};
+            fi
+            ;;
+        (s)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -s expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MIN_SIZE=${OPTARG};
+            fi
+            ;;
+        (S)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -S expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MAX_SIZE=${OPTARG};
             fi
             ;;
         (t)
@@ -227,6 +258,18 @@ newer_files_nb() {
 older_files_nb() {
     OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin +${MAX_AGE} |wc -l)
     typeset -i OLDER_FILES_NB 2>/dev/null
+}
+
+# Count number of files smaller than min-size
+smaller_files_nb() {
+    SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size -${MIN_SIZE}k |wc -l)
+    typeset -i SMALLER_FILES_NB 2>/dev/null
+}
+
+# Count number of files bigger than max-size
+bigger_files_nb() {
+    BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size +${MAX_SIZE}k |wc -l)
+    typeset -i BIGGER_FILES_NB 2>/dev/null
 }
 
 # Check if we have the GNU implementation of find
@@ -330,6 +373,34 @@ then
     if [ ${NB_FILES} -lt ${MIN_COUNT} ]
     then
         RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
+fi
+
+## Is there files which are too big?
+if [ $MAX_SIZE -gt -1 ]
+then
+    bigger_files_nb "${search}"
+    if [ ${BIGGER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}
+    fi
+fi
+
+## Is there files which are too small?
+if [ $MIN_SIZE -gt 0 ]
+then
+    smaller_files_nb "${search}"
+    if [ ${SMALLER_FILES_NB} -gt 0 ]
+    then
+        RETURN_MESSAGE="${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
