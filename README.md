@@ -13,4 +13,4 @@ The different constraints are the following :
  
 For space used and size of file the unit is fixed and is kilo-bytes.
 
-Although the script is portable and should run unmodified on any *NIX some functionnalities are only available if _find_ is GNU find.
+Although the script is portable and should run unmodified on any *NIX, some functionnalities are only available if _find_ is GNU find.
