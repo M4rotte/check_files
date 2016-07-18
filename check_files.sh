@@ -241,29 +241,19 @@ is_gnu_find() {
 
 # Main script #
 
-## Search type tag
+## Recursive?
 if $RECURSIVE
 then 
     tag="(R${SEARCH_TYPE})"
+    search="$SEARCH_PATH"
 else 
     tag="(${SEARCH_TYPE})"
-fi
-
-# Effective search path
-
-if $RECURSIVE
-then
-    search="$SEARCH_PATH"
-else
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
-fi 
+fi
 
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    #~ cat <<EOF
-#~ find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}'
-#~ EOF
     firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
