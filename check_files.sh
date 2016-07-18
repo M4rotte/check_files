@@ -213,35 +213,20 @@ find_type_clause "${SEARCH_TYPE}"
 
 # Count files
 nb_files() {
-if ${RECURSIVE}
-then
-    NB_FILES="$(find "$1" ${FIND_TYPE_CLAUSE} |wc -l)"
-else    
-    NB_FILES="$(find "$1"/* "$1"/.* -prune ${FIND_TYPE_CLAUSE} |wc -l)"
-fi
-typeset -i NB_FILES  2>/dev/null
+    NB_FILES=$(find $1 ${FIND_TYPE_CLAUSE} |wc -l)
+    typeset -i NB_FILES  2>/dev/null
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
-if ${RECURSIVE};
-then
-    NEWER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
-else
-    NEWER_FILES_NB=$(find "$1"/* "$1"/.* -prune $FIND_TYPE_CLAUSE -mmin -${MIN_AGE} |wc -l)
-fi
-typeset -i NEWER_FILES_NB 2>/dev/null
+    NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin -${MIN_AGE} |wc -l)
+    typeset -i NEWER_FILES_NB 2>/dev/null
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-if ${RECURSIVE};
-then
-    OLDER_FILES_NB=$(find "$1" $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
-else
-    OLDER_FILES_NB=$(find "$1"/* "$1/".* -prune $FIND_TYPE_CLAUSE -mmin +${MAX_AGE} |wc -l)
-fi
-typeset -i OLDER_FILES_NB 2>/dev/null
+    OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin +${MAX_AGE} |wc -l)
+    typeset -i OLDER_FILES_NB 2>/dev/null
 }
 
 # Check if we have the GNU implementation of find
@@ -309,7 +294,7 @@ fi
 ## Is there a file newer than min_age?
 if [ $MIN_AGE -gt 0 ]
 then
-    newer_files_nb "${SEARCH_PATH}";
+    newer_files_nb "${search}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
@@ -323,7 +308,7 @@ fi
 ## Is there a file older than max_age?
 if [ $MAX_AGE -gt -1 ]
 then
-    older_files_nb "${SEARCH_PATH}"
+    older_files_nb "${search}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
@@ -334,7 +319,7 @@ then
 fi
 
 ## Count files
-nb_files "${SEARCH_PATH}"
+nb_files "${search}"
 
 ## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
