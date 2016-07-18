@@ -33,6 +33,10 @@ SMALLER_FILES_NB=0
 MAX_SIZE=-1
 BIGGER_FILES_NB=0
 
+## Disk usage constraints
+MIN_USAGE=0
+MAX_USAGE=-1
+
 # Help message
 
 help_message() {
@@ -45,7 +49,8 @@ Check some properties on files in a given directory on POSIX systems.
 Returns OK, only if all the constraints are met.
 
 Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
-                        [-s min-size] [-S max-size] [-t filetype]
+                        [-s min-size] [-S max-size] [-u min-usage] [-U max-usage]
+                        [-t filetype]
 
 
  -d/--dir        <path>   Directory to search files in (default: \$HOME)
@@ -57,14 +62,16 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
                             d : directory
                             l : symbolic link
                             
-                          ex: 'fd' to search for files and directories.  
+                          ex: 'fd' to search for regular files and directories.  
                            
  -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
  -n/--min-count  <int>    Minimum number of files (default: ${MIN_COUNT})
  -N/--max-count  <int>    Maximum number of files (default: ${MAX_COUNT})
  -s/--min-size   <int>    Minimum size of each file in kB (default: ${MIN_SIZE})
- -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE}) 
+ -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE})
+ -u/--min-usage  <int>    Minimum disk usage in kB (default: ${MIN_USAGE})
+ -U/--max-usage  <int>    Maximum disk usage in kB (default: ${MAX_USAGE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
                            
@@ -106,6 +113,8 @@ for arg in "${@}"; do
      ("--max-count")    set -- "${@}" "-N" ;;
      ("--min-size")     set -- "${@}" "-s" ;;
      ("--max-size")     set -- "${@}" "-S" ;;
+     ("--min-usage")    set -- "${@}" "-s" ;;
+     ("--max-usage")    set -- "${@}" "-S" ;;
      ("--recursive")    set -- "${@}" "-r" ;;
      ("--file-type")    set -- "${@}" "-t" ;;
      ("--warn-only")    set -- "${@}" "-W" ;;
@@ -116,7 +125,7 @@ for arg in "${@}"; do
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:s:S:t:lL" opt; do
+while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -208,6 +217,26 @@ while getopts "vWhd:ra:A:n:N:s:S:t:lL" opt; do
                 MAX_SIZE=${OPTARG};
             fi
             ;;
+        (u)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -u expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MIN_USAGE=${OPTARG};
+            fi
+            ;;
+        (U)
+            if ! is_int ${OPTARG};
+            then
+                printf "\n%s\n" "Option -U expects a positive integer number as argument."
+                RETURN_CODE=3;
+                exit ${RETURN_CODE};
+            else
+                MAX_USAGE=${OPTARG};
+            fi
+            ;;
         (t)
             SEARCH_TYPE="${OPTARG}";
             ;;
@@ -270,6 +299,13 @@ smaller_files_nb() {
 bigger_files_nb() {
     BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size +${MAX_SIZE}k |wc -l)
     typeset -i BIGGER_FILES_NB 2>/dev/null
+}
+
+# Measure disk usage
+
+disk_usage() {
+    DISK_USAGE=$(du -sk ${SEARCH_PATH} |cut -f1)
+    typeset -i DISK_USAGE 2>/dev/null
 }
 
 # Check if we have the GNU implementation of find
@@ -408,11 +444,38 @@ then
     fi
 fi
 
+# Measure disk usage
+disk_usage
+
+## Is there too much space used?
+if [ $MAX_USAGE -gt -1 ]
+then
+    if [ $DISK_USAGE -gt $MAX_USAGE ]
+    then
+        RETURN_MESSAGE="${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}    
+    fi    
+fi
+
+## Is there too few space used?
+if [ $MIN_USAGE -gt 0 ]
+then
+    if [ $DISK_USAGE -lt $MIN_USAGE ]
+    then
+        RETURN_MESSAGE="${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_CODE=${ERROR_CODE}
+        printf "%s\n" "${RETURN_MESSAGE}"
+        exit ${RETURN_CODE}    
+    fi    
+fi
+
 ## All tests passed successfully!
 ## Return 0 (OK) and a gentle & convenient message
 if [ $NB_FILES -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB) ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
 else
     RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag}"
 fi    
