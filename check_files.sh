@@ -9,13 +9,15 @@ VERBOSE=false
 VERBOSITY=0
 RETURN_CODE=3                # UNKNOWN : Status if anything goes wrong past this line.
 ERROR_CODE=2                 # CRITICAL : Status on error (use option -W to set it to 1 (WARNING) instead)
-SEARCH_PATH=$HOME            # If not provided, search there
+SEARCH_PATH=${HOME}          # If not provided, search there
 SEARCH_TYPE='f'              # Search this kind of file
 FIND_TYPE_CLAUSE=""          # Will store the type options for the find command
 RECURSIVE=false              # Do not search in sub directories 
 SEARCH_AGE=false             # Do not search for oldest and newest files
 SEARCH_SIZE=false            # Do not search for biggest and tiniest files
+MULTILINE=false              # One line output by defaut
 RETURN_MESSAGE=""
+        
 
 ## Age constraints
 MIN_AGE=0
@@ -46,9 +48,9 @@ $(basename "$0")
 
 Check some properties on files in a given directory on POSIX systems.
 
-Returns OK, only if all the constraints are met.
+Returns OK only if all the constraints are met.
 
-Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
+Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
                         [-s min-size] [-S max-size] [-u min-usage] [-U max-usage]
                         [-t filetype]
 
@@ -74,6 +76,7 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
  -U/--max-usage  <int>    Maximum disk usage in kB (default: ${MAX_USAGE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
+ -M/--multiline           Add line returns in the output
                            
  -h/--help                Show this help
  -v/--verbose             Verbose mode
@@ -120,12 +123,13 @@ for arg in "${@}"; do
      ("--warn-only")    set -- "${@}" "-W" ;;
      ("--search-age")   set -- "${@}" "-l" ;;
      ("--search-size")  set -- "${@}" "-L" ;;
+     ("--multiline")    set -- "${@}" "-M" ;;
      (*)                set -- "${@}" "${arg}"
   esac
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
+while getopts "vWhMlLd:ra:A:n:N:s:S:u:U:t:" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -240,6 +244,9 @@ while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
         (t)
             SEARCH_TYPE="${OPTARG}";
             ;;
+        (M)
+            MULTILINE=true
+            ;;
         (\?)
             printf "%s\n" "Unsupported option...";
             help_message;
@@ -264,7 +271,7 @@ find_type_clause() {
             FIND_TYPE_CLAUSE=" ( -type l -o -type d -o -type f ) "
             ;;
         (*)
-            (>&2 echo "Search type '${SEARCH_TYPE}' invalid, switching to 'f'.")                       
+            (>&2 echo "Search type '${SEARCH_TYPE}' invalid, switching back to 'f'.")                       
             SEARCH_TYPE="f"; FIND_TYPE_CLAUSE=" -type f "
         ;;
     esac    
@@ -274,38 +281,32 @@ find_type_clause "${SEARCH_TYPE}"
 # Count files
 nb_files() {
     NB_FILES=$(find $1 ${FIND_TYPE_CLAUSE} |wc -l)
-    typeset -i NB_FILES  2>/dev/null
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
     NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin -${MIN_AGE} |wc -l)
-    typeset -i NEWER_FILES_NB 2>/dev/null
 }
 
 # Count number of files older than max-age
 older_files_nb() {
     OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin +${MAX_AGE} |wc -l)
-    typeset -i OLDER_FILES_NB 2>/dev/null
 }
 
 # Count number of files smaller than min-size
 smaller_files_nb() {
     SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size -${MIN_SIZE}k |wc -l)
-    typeset -i SMALLER_FILES_NB 2>/dev/null
 }
 
 # Count number of files bigger than max-size
 bigger_files_nb() {
     BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size +${MAX_SIZE}k |wc -l)
-    typeset -i BIGGER_FILES_NB 2>/dev/null
 }
 
 # Measure disk usage
 
 disk_usage() {
     DISK_USAGE=$(du -sk ${SEARCH_PATH} |cut -f1)
-    typeset -i DISK_USAGE 2>/dev/null
 }
 
 # Check if we have the GNU implementation of find
@@ -340,9 +341,17 @@ then
     newest_file() {
     printf "$firstlast\n" |tail -1
     }
-    OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
-    NEWEST_MESSAGE="[Newest:$(newest_file)]"
-    OLDNEW_MESSAGE="${OLDEST_MESSAGE}${NEWEST_MESSAGE}"
+    if $MULTILINE
+    then
+        template='\n%s\n%s\n'
+        template1='%s\n'
+    else
+        template='%s %s\n'
+        template1='%s\n'
+    fi
+    OLDEST_MESSAGE=$(printf "$template1" "[Oldest:$(oldest_file)]")
+    NEWEST_MESSAGE=$(printf "$template1" "[Newest:$(newest_file)]")
+    OLDNEW_MESSAGE=$(printf "$template" "${OLDEST_MESSAGE}" "${NEWEST_MESSAGE}")
 fi
 
 # Search for smallest and biggest files
@@ -355,9 +364,17 @@ then
     biggest_file() {
     printf "$firstlast\n" |tail -1
     }
-    SMALLEST_MESSAGE="[Smallest:$(smallest_file)]"
-    BIGGEST_MESSAGE="[Biggest:$(biggest_file)]"
-    SMALLBIG_MESSAGE="${SMALLEST_MESSAGE}${BIGGEST_MESSAGE}"
+    if $MULTILINE
+    then
+        template='\n%s\n%s\n'
+        template1='%s\n'
+    else
+        template='%s %s\n'
+        template1='%s\n'
+    fi
+    SMALLEST_MESSAGE=$(printf "$template1" "[Smallest:$(smallest_file)]")
+    BIGGEST_MESSAGE=$(printf "$template1" "[Biggest:$(biggest_file)]")
+    SMALLBIG_MESSAGE=$(printf "$template" "${SMALLEST_MESSAGE}" "${BIGGEST_MESSAGE}")
 fi
 
 ## Is there a file newer than min_age?
@@ -366,7 +383,7 @@ then
     newer_files_nb "${search}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}"
         RETURN_MESSAGE="${RETURN_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
@@ -380,7 +397,7 @@ then
     older_files_nb "${search}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
+        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${OLDEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
@@ -423,7 +440,7 @@ then
     if [ ${BIGGER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${BIGGEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
@@ -437,7 +454,7 @@ then
     if [ ${SMALLER_FILES_NB} -gt 0 ]
     then
         RETURN_MESSAGE="${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${SMALLEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
         printf "%s\n" "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
