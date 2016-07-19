@@ -9,13 +9,14 @@ VERBOSE=false
 VERBOSITY=0
 RETURN_CODE=3                # UNKNOWN : Status if anything goes wrong past this line.
 ERROR_CODE=2                 # CRITICAL : Status on error (use option -W to set it to 1 (WARNING) instead)
-SEARCH_PATH=$HOME            # If not provided, search there
+SEARCH_PATH=${HOME}          # If not provided, search there
 SEARCH_TYPE='f'              # Search this kind of file
 FIND_TYPE_CLAUSE=""          # Will store the type options for the find command
 RECURSIVE=false              # Do not search in sub directories 
 SEARCH_AGE=false             # Do not search for oldest and newest files
 SEARCH_SIZE=false            # Do not search for biggest and tiniest files
 RETURN_MESSAGE=""
+RETURN_MESSAGE_SEP=" "        
 
 ## Age constraints
 MIN_AGE=0
@@ -48,7 +49,7 @@ Check some properties on files in a given directory on POSIX systems.
 
 Returns OK, only if all the constraints are met.
 
-Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
+Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N max-count]
                         [-s min-size] [-S max-size] [-u min-usage] [-U max-usage]
                         [-t filetype]
 
@@ -74,6 +75,7 @@ Usage: $(basename "$0") [-vhrWlL] [-a min-age] [-A max-age] [-n min-count] [-N m
  -U/--max-usage  <int>    Maximum disk usage in kB (default: ${MAX_USAGE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
+ -M/--multiline           Add line returns in the output
                            
  -h/--help                Show this help
  -v/--verbose             Verbose mode
@@ -120,12 +122,13 @@ for arg in "${@}"; do
      ("--warn-only")    set -- "${@}" "-W" ;;
      ("--search-age")   set -- "${@}" "-l" ;;
      ("--search-size")  set -- "${@}" "-L" ;;
+     ("--multiline")    set -- "${@}" "-M" ;;
      (*)                set -- "${@}" "${arg}"
   esac
 done;
 
 ## Parse command line options
-while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
+while getopts "vWhMlLd:ra:A:n:N:s:S:u:U:t:" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -240,6 +243,9 @@ while getopts "vWhd:ra:A:n:N:s:S:u:U:t:lL" opt; do
         (t)
             SEARCH_TYPE="${OPTARG}";
             ;;
+        (M)
+            RETURN_MESSAGE_SEP="\\n";
+            ;;
         (\?)
             printf "%s\n" "Unsupported option...";
             help_message;
@@ -342,7 +348,7 @@ then
     }
     OLDEST_MESSAGE="[Oldest:$(oldest_file)]"
     NEWEST_MESSAGE="[Newest:$(newest_file)]"
-    OLDNEW_MESSAGE="${OLDEST_MESSAGE}${NEWEST_MESSAGE}"
+    OLDNEW_MESSAGE="${OLDEST_MESSAGE}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}"
 fi
 
 # Search for smallest and biggest files
@@ -357,7 +363,7 @@ then
     }
     SMALLEST_MESSAGE="[Smallest:$(smallest_file)]"
     BIGGEST_MESSAGE="[Biggest:$(biggest_file)]"
-    SMALLBIG_MESSAGE="${SMALLEST_MESSAGE}${BIGGEST_MESSAGE}"
+    SMALLBIG_MESSAGE="${SMALLEST_MESSAGE}${RETURN_MESSAGE_SEP}${BIGGEST_MESSAGE}"
 fi
 
 ## Is there a file newer than min_age?
@@ -366,10 +372,10 @@ then
     newer_files_nb "${search}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag} ${NEWEST_MESSAGE}"
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}"
         RETURN_MESSAGE="${RETURN_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -380,9 +386,9 @@ then
     older_files_nb "${search}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag} ${OLDEST_MESSAGE}"
+        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${OLDEST_MESSAGE}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -398,7 +404,7 @@ then
         RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -411,7 +417,7 @@ then
         RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -425,7 +431,7 @@ then
         RETURN_MESSAGE="${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -439,7 +445,7 @@ then
         RETURN_MESSAGE="${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}
     fi
 fi
@@ -454,7 +460,7 @@ then
     then
         RETURN_MESSAGE="${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}    
     fi    
 fi
@@ -466,7 +472,7 @@ then
     then
         RETURN_MESSAGE="${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
+        printf "${RETURN_MESSAGE}"
         exit ${RETURN_CODE}    
     fi    
 fi
@@ -475,10 +481,10 @@ fi
 ## Return 0 (OK) and a gentle & convenient message
 if [ $NB_FILES -gt 0 ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB) ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB)${RETURN_MESSAGE_SEP}${OLDNEW_MESSAGE}${RETURN_MESSAGE_SEP}${SMALLBIG_MESSAGE}"
 else
     RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag}"
 fi    
 RETURN_CODE=0
-printf "%s\n" "${RETURN_MESSAGE}"
+printf "${RETURN_MESSAGE}"
 exit ${RETURN_CODE}
