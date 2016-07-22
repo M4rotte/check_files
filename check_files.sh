@@ -64,7 +64,9 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                             d : directory
                             l : symbolic link
                             
-                          ex: 'fd' to search for regular files and directories.  
+                          ex: 'fd' to search for regular files and directories.
+                          
+                          NB: If directories are searched, '.' and '..' are included in the total count.
                            
  -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
@@ -85,7 +87,7 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
  
  -l/--search-age          Search for oldest and newest files. (default: $SEARCH_AGE)
  -L/--search-size         Search for biggest and smallest files. (default: $SEARCH_SIZE)
-                          Thoses searches can be particulary long if used
+                          Those searches can be particulary long if used
                           in conjonction with -r (recursive).
 
 EOF
