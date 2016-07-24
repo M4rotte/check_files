@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-set -x
+#~ set -x
 
 # Default values
 
@@ -520,7 +520,7 @@ if [ $MIN_USAGE -gt 0 ]
 then
     if [ $DISK_USAGE -lt $MIN_USAGE ]
     then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)${sep}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses less than $MIN_USAGE kB ${USAGE_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
     fi    
 fi
@@ -528,7 +528,7 @@ fi
 ## Return message empty => Retur 0 (OK) and a gentle & convenient message
 if [ -z "${RETURN_MESSAGE}" ]
 then
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB) ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE} ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
     RETURN_CODE=0
 fi
 #~ printf "%s\n" "${RETURN_MESSAGE}"
