@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-#~ set -x
+set -x
 
 # Default values
 
@@ -82,6 +82,8 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                                     
  -i/--include    <string> Search only for files with this name
  -x/--exclude    <string> Exclude files with this name
+ 
+                          It's only possible to use at most one include and one exclude pattern.
 
                            
  -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
@@ -90,8 +92,8 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
  -N/--max-count  <int>    Maximum number of files (default: ${MAX_COUNT})
  -s/--min-size   <int>    Minimum size of each file in kB (default: ${MIN_SIZE})
  -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE})
- -u/--min-usage  <int>    Minimum disk usage in kB (default: ${MIN_USAGE})
- -U/--max-usage  <int>    Maximum disk usage in kB (default: ${MAX_USAGE}) 
+ -u/--min-usage  <int>    Minimum disk usage for files in kB (default: ${MIN_USAGE})
+ -U/--max-usage  <int>    Maximum disk usage for files in kB (default: ${MAX_USAGE}) 
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
  -M/--multiline           Add line returns in the output
@@ -316,7 +318,7 @@ find_name_clause() {
     fi    
     if [ $(expr length $2) -gt 2  ]
     then
-        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}"! -name  "$2
+        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}"\! -name  "$2
     fi    
 }
 find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
@@ -324,34 +326,34 @@ find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
 # Do find
 do_find() {
 cat <<EOF
-find $*
+find $* 2>/dev/null
 EOF
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
-    NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin -${MIN_AGE} |wc -l)
+    NEWER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin -${MIN_AGE}) |wc -l)
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-    OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin +${MAX_AGE} |wc -l)
+    OLDER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin +${MAX_AGE}) |wc -l)
 }
 
 # Count number of files smaller than min-size
 smaller_files_nb() {
-    SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size -${MIN_SIZE}k |wc -l)
+    SMALLER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size -${MIN_SIZE}k) |wc -l)
 }
 
 # Count number of files bigger than max-size
 bigger_files_nb() {
-    BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size +${MAX_SIZE}k |wc -l)
+    BIGGER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size +${MAX_SIZE}k) |wc -l)
 }
 
 # Measure disk usage
 
 disk_usage() {
-    DISK_USAGE=$(du -sk ${SEARCH_PATH} |cut -f1)
+    DISK_USAGE=$(eval $(do_find ${SEARCH_PATH}) |du -sk  |cut -f1)
 }
 
 # Check if we have the GNU implementation of find
@@ -380,8 +382,10 @@ fi
 if $MULTILINE
 then
     template='\n%s\n%s\n'
+    sep='\n'
 else
     template='%s %s\n'
+    sep=' '
 fi
 
 ## Count files
@@ -425,11 +429,8 @@ then
     newer_files_nb "${search}";
     if [ ${NEWER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}"
-        RETURN_MESSAGE="${RETURN_MESSAGE}"
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -439,10 +440,8 @@ then
     older_files_nb "${search}"
     if [ ${OLDER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${OLDEST_MESSAGE}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${OLDEST_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -451,11 +450,9 @@ if [ $MAX_COUNT -gt -1 ]
 then
     if [ ${NB_FILES} -gt ${MAX_COUNT} ]
     then
-        RETURN_MESSAGE="More than ${MAX_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"More than ${MAX_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -464,11 +461,9 @@ if [ $MIN_COUNT -gt 0 ]
 then
     if [ ${NB_FILES} -lt ${MIN_COUNT} ]
     then
-        RETURN_MESSAGE="Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -478,11 +473,9 @@ then
     bigger_files_nb "${search}"
     if [ ${BIGGER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${BIGGEST_MESSAGE}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${BIGGEST_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -492,11 +485,9 @@ then
     smaller_files_nb "${search}"
     if [ ${SMALLER_FILES_NB} -gt 0 ]
     then
-        RETURN_MESSAGE="${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${SMALLEST_MESSAGE}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${SMALLEST_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}
     fi
 fi
 
@@ -508,10 +499,8 @@ if [ $MAX_USAGE -gt -1 ]
 then
     if [ $DISK_USAGE -gt $MAX_USAGE ]
     then
-        RETURN_MESSAGE="${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}    
     fi    
 fi
 
@@ -520,21 +509,17 @@ if [ $MIN_USAGE -gt 0 ]
 then
     if [ $DISK_USAGE -lt $MIN_USAGE ]
     then
-        RETURN_MESSAGE="${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses less than $MIN_USAGE kB (${DISK_USAGE} kB)${sep}"
         RETURN_CODE=${ERROR_CODE}
-        printf "%s\n" "${RETURN_MESSAGE}"
-        exit ${RETURN_CODE}    
     fi    
 fi
 
-## All tests passed successfully!
-## Return 0 (OK) and a gentle & convenient message
-if [ $NB_FILES -gt 0 ]
+## Return message empty => Retur 0 (OK) and a gentle & convenient message
+if [ -z "${RETURN_MESSAGE}" ]
 then
     RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} (${DISK_USAGE} kB) ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
-else
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag}"
-fi    
-RETURN_CODE=0
-printf "%s\n" "${RETURN_MESSAGE}"
+    RETURN_CODE=0
+fi
+#~ printf "%s\n" "${RETURN_MESSAGE}"
+echo "${RETURN_MESSAGE}"
 exit ${RETURN_CODE}
