@@ -289,12 +289,12 @@ find_type_clause() {
         (f)                       SEARCH_TYPE="f";  FIND_TYPE_CLAUSE=" -type f " ;;
         (d)                       SEARCH_TYPE="d";  FIND_TYPE_CLAUSE=" -type d " ;;
         (l)                       SEARCH_TYPE="l";  FIND_TYPE_CLAUSE=" -type l " ;;
-        (fd|df)                   SEARCH_TYPE="fd"; FIND_TYPE_CLAUSE=" ( -type f -o -type d ) " ;;
-        (fl|lf)                   SEARCH_TYPE="fl"; FIND_TYPE_CLAUSE=" ( -type f -o -type l ) " ;;
-        (ld|dl)                   SEARCH_TYPE="dl"; FIND_TYPE_CLAUSE=" ( -type l -o -type d ) " ;;
+        (fd|df)                   SEARCH_TYPE="fd"; FIND_TYPE_CLAUSE=" \( -type f -o -type d \) " ;;
+        (fl|lf)                   SEARCH_TYPE="fl"; FIND_TYPE_CLAUSE=" \( -type f -o -type l \) " ;;
+        (ld|dl)                   SEARCH_TYPE="dl"; FIND_TYPE_CLAUSE=" \( -type l -o -type d \) " ;;
         (fld|fdl|ldf|lfd|dfl|dlf)
             SEARCH_TYPE="fdl"
-            FIND_TYPE_CLAUSE=" ( -type l -o -type d -o -type f ) "
+            FIND_TYPE_CLAUSE=" \( -type l -o -type d -o -type f \) "
             ;;
         (*)
             (>&2 echo "Search type '${SEARCH_TYPE}' invalid, switching back to 'f'.")                       
@@ -321,8 +321,8 @@ find_name_clause() {
 }
 find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
 
-# Count files
-nb_files() {
+# Do find
+do_find() {
 cat <<EOF
 find $*
 EOF
@@ -384,10 +384,14 @@ else
     template='%s %s\n'
 fi
 
+## Count files
+NB_FILES=$(eval $(do_find ${search} ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
+
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    firstlast=$(find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
+    firstlast=$(eval $(do_find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -402,7 +406,8 @@ fi
 # Search for smallest and biggest files
 if is_gnu_find && $SEARCH_SIZE
 then
-    firstlast=$(find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -printf "%s;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
+    firstlast=$(eval $(do_find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     smallest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -440,9 +445,6 @@ then
         exit ${RETURN_CODE}
     fi
 fi
-
-## Count files
-NB_FILES=$(eval $(nb_files ${search} ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
 
 ## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
