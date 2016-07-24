@@ -42,7 +42,7 @@ MAX_USAGE=-1
 
 # What pager is available?
 
-if env less
+if env less 2>/dev/null
 then pager='less'
 else pager='more'
 fi
@@ -376,6 +376,14 @@ else
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
 fi
 
+# Multiline?
+if $MULTILINE
+then
+    template='\n%s\n%s\n'
+else
+    template='%s %s\n'
+fi
+
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
@@ -386,16 +394,8 @@ then
     newest_file() {
     printf "$firstlast\n" |tail -1
     }
-    if $MULTILINE
-    then
-        template='\n%s\n%s\n'
-        template1='%s\n'
-    else
-        template='%s %s\n'
-        template1='%s\n'
-    fi
-    OLDEST_MESSAGE=$(printf "$template1" "[Oldest:$(oldest_file)]")
-    NEWEST_MESSAGE=$(printf "$template1" "[Newest:$(newest_file)]")
+    OLDEST_MESSAGE=$(printf '%s\n' "[Oldest:$(oldest_file)]")
+    NEWEST_MESSAGE=$(printf '%s\n' "[Newest:$(newest_file)]")
     OLDNEW_MESSAGE=$(printf "$template" "${OLDEST_MESSAGE}" "${NEWEST_MESSAGE}")
 fi
 
@@ -409,16 +409,8 @@ then
     biggest_file() {
     printf "$firstlast\n" |tail -1
     }
-    if $MULTILINE
-    then
-        template='\n%s\n%s\n'
-        template1='%s\n'
-    else
-        template='%s %s\n'
-        template1='%s\n'
-    fi
-    SMALLEST_MESSAGE=$(printf "$template1" "[Smallest:$(smallest_file)]")
-    BIGGEST_MESSAGE=$(printf "$template1" "[Biggest:$(biggest_file)]")
+    SMALLEST_MESSAGE=$(printf '%s\n' "[Smallest:$(smallest_file)]")
+    BIGGEST_MESSAGE=$(printf '%s\n' "[Biggest:$(biggest_file)]")
     SMALLBIG_MESSAGE=$(printf "$template" "${SMALLEST_MESSAGE}" "${BIGGEST_MESSAGE}")
 fi
 
