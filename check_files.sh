@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-#~ set -x
+set -x
 
 # Default values
 
@@ -19,6 +19,7 @@ SEARCH_SIZE=false            # Do not search for biggest and tiniest files
 SEARCH_NAME_INCLUDE=""       # Only include files with this name from the count
 SEARCH_NAME_EXCLUDE=""       # Exclude files with this name from the count
 RECURSIVE=false              # Do not search in sub directories
+
 
 ## Age constraints
 MIN_AGE=0
@@ -326,7 +327,7 @@ find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
 # Do find
 do_find() {
 cat <<EOF
-find $* 2>/dev/null
+find $*
 EOF
 }
 
@@ -353,7 +354,7 @@ bigger_files_nb() {
 # Measure disk usage
 
 disk_usage() {
-    DISK_USAGE=$(eval $(do_find ${SEARCH_PATH}) |du -sk  |cut -f1)
+    DISK_USAGE=$(eval $(do_find $1 -type f ${FIND_NAME_CLAUSE} -exec 'du -sk {} \;' )| cut -f1 | awk '{total=total+$1}END{print total}')
 }
 
 # Check if we have the GNU implementation of find
@@ -371,10 +372,10 @@ is_gnu_find() {
 ## Recursive?
 if $RECURSIVE
 then 
-    tag="(R${SEARCH_TYPE}i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
+    tag="(R${SEARCH_TYPE}|i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH"
 else 
-    tag="(${SEARCH_TYPE}i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
+    tag="(${SEARCH_TYPE}|i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
 fi
 
@@ -389,13 +390,13 @@ else
 fi
 
 ## Count files
-NB_FILES=$(eval $(do_find ${search} ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
+NB_FILES=$(eval $(do_find '${search}' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
 
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
     format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
-    firstlast=$(eval $(do_find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    firstlast=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -411,7 +412,7 @@ fi
 if is_gnu_find && $SEARCH_SIZE
 then
     format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
-    firstlast=$(eval $(do_find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    firstlast=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     smallest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -492,14 +493,24 @@ then
 fi
 
 # Measure disk usage
-disk_usage
+if [ $MIN_USAGE -gt 0 -o $MAX_USAGE -gt -1 ]
+then
+    disk_usage '$search'
+else
+    DISK_USAGE=0    
+fi
+
+if [ $DISK_USAGE -gt 0 ]
+then
+USAGE_MESSAGE="("${DISK_USAGE}" kB)"
+fi
 
 ## Is there too much space used?
 if [ $MAX_USAGE -gt -1 ]
 then
     if [ $DISK_USAGE -gt $MAX_USAGE ]
     then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses more than $MAX_USAGE kB (${DISK_USAGE} kB)${sep}"
+        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses more than $MAX_USAGE kB ${USAGE_MESSAGE}${sep}"
         RETURN_CODE=${ERROR_CODE}
     fi    
 fi
