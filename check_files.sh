@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-set +x
+set -x
 
 # Default values
 
@@ -9,15 +9,16 @@ VERBOSE=false
 VERBOSITY=0
 RETURN_CODE=3                # UNKNOWN : Status if anything goes wrong past this line.
 ERROR_CODE=2                 # CRITICAL : Status on error (use option -W to set it to 1 (WARNING) instead)
-SEARCH_PATH=${HOME}          # If not provided, search there
-SEARCH_TYPE='f'              # Search this kind of file
-FIND_TYPE_CLAUSE=""          # Will store the type options for the find command
-RECURSIVE=false              # Do not search in sub directories 
+MULTILINE=false              # Output on one line by defaut
+
+## Search caracteristics
+SEARCH_PATH="."              # If not provided, search current dir
+SEARCH_TYPE='f'              # Search only regular files
 SEARCH_AGE=false             # Do not search for oldest and newest files
 SEARCH_SIZE=false            # Do not search for biggest and tiniest files
-MULTILINE=false              # One line output by defaut
-RETURN_MESSAGE=""
-        
+SEARCH_NAME_INCLUDE=""       # Only include files with this name from the count
+SEARCH_NAME_EXCLUDE=""       # Exclude files with this name from the count
+RECURSIVE=false              # Do not search in sub directories
 
 ## Age constraints
 MIN_AGE=0
@@ -42,7 +43,7 @@ MAX_USAGE=-1
 # Help message
 
 help_message() {
-cat <<EOF
+more <<EOF
 
 $(basename "$0")
 
@@ -66,7 +67,15 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                             
                           ex: 'fd' to search for regular files and directories.
                           
-                          NB: If directories are searched, '.' and '..' are included in the total count.
+                          [NB]: '.' and '..' are counted when searching for directories.
+                          
+                          To check if a directory is empty use: -tfdl -N2
+                          
+                                    -tfdl -N2
+                                    
+ -i/--include    <string> Search only for files with this name
+ -x/--exclude    <string> Exclude files with this name
+
                            
  -a/--min-age    <int>    Minimum age of the most recent file in minutes (default: ${MIN_AGE})
  -A/--max-age    <int>    Maximum age of the oldest file in minutes (default: ${MAX_AGE})
@@ -118,20 +127,22 @@ for arg in "${@}"; do
      ("--max-count")    set -- "${@}" "-N" ;;
      ("--min-size")     set -- "${@}" "-s" ;;
      ("--max-size")     set -- "${@}" "-S" ;;
-     ("--min-usage")    set -- "${@}" "-s" ;;
-     ("--max-usage")    set -- "${@}" "-S" ;;
+     ("--min-usage")    set -- "${@}" "-u" ;;
+     ("--max-usage")    set -- "${@}" "-U" ;;
      ("--recursive")    set -- "${@}" "-r" ;;
      ("--file-type")    set -- "${@}" "-t" ;;
      ("--warn-only")    set -- "${@}" "-W" ;;
      ("--search-age")   set -- "${@}" "-l" ;;
      ("--search-size")  set -- "${@}" "-L" ;;
+     ("--include")      set -- "${@}" "-i" ;;
+     ("--exclude")      set -- "${@}" "-x" ;;
      ("--multiline")    set -- "${@}" "-M" ;;
      (*)                set -- "${@}" "${arg}"
   esac
 done;
 
 ## Parse command line options
-while getopts "vWhMlLd:ra:A:n:N:s:S:u:U:t:" opt; do
+while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -162,6 +173,12 @@ while getopts "vWhMlLd:ra:A:n:N:s:S:u:U:t:" opt; do
             ;;
         (L)
             SEARCH_SIZE=true;
+            ;;
+        (i)
+            SEARCH_NAME_INCLUDE="${OPTARG}";
+            ;;
+        (x)
+            SEARCH_NAME_EXCLUDE="${OPTARG}";
             ;;
         (a)
             if ! is_int ${OPTARG};
@@ -280,29 +297,48 @@ find_type_clause() {
 }
 find_type_clause "${SEARCH_TYPE}"
 
+# Prepare the name clause for find
+find_name_clause() {
+    if [ $(expr length $1) -gt 2 ]
+    then
+        FIND_NAME_CLAUSE=" -name "$1
+    fi
+    if [ $(expr length $1) -gt 2 -a $(expr length $2) -gt 2  ]
+    then
+        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}" -a "
+    fi    
+    if [ $(expr length $2) -gt 2  ]
+    then
+        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}"! -name  "$2
+    fi    
+}
+find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
+
 # Count files
 nb_files() {
-    NB_FILES=$(find $1 ${FIND_TYPE_CLAUSE} |wc -l)
+cat <<EOF
+find $*
+EOF
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
-    NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin -${MIN_AGE} |wc -l)
+    NEWER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin -${MIN_AGE} |wc -l)
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-    OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -mmin +${MAX_AGE} |wc -l)
+    OLDER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin +${MAX_AGE} |wc -l)
 }
 
 # Count number of files smaller than min-size
 smaller_files_nb() {
-    SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size -${MIN_SIZE}k |wc -l)
+    SMALLER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size -${MIN_SIZE}k |wc -l)
 }
 
 # Count number of files bigger than max-size
 bigger_files_nb() {
-    BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} -size +${MAX_SIZE}k |wc -l)
+    BIGGER_FILES_NB=$(find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size +${MAX_SIZE}k |wc -l)
 }
 
 # Measure disk usage
@@ -326,17 +362,17 @@ is_gnu_find() {
 ## Recursive?
 if $RECURSIVE
 then 
-    tag="(R${SEARCH_TYPE})"
+    tag="(R${SEARCH_TYPE}i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH"
 else 
-    tag="(${SEARCH_TYPE})"
+    tag="(${SEARCH_TYPE}i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
 fi
 
 # Search for oldest and newest files
 if is_gnu_find && $SEARCH_AGE
 then
-    firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    firstlast=$(find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -printf "%Cs;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -359,7 +395,7 @@ fi
 # Search for smallest and biggest files
 if is_gnu_find && $SEARCH_SIZE
 then
-    firstlast=$(find $search $FIND_TYPE_CLAUSE -printf "%s;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    firstlast=$(find $search ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -printf "%s;%Cc;%p;%k kB;%Y\n" |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     smallest_file() {
     printf "$firstlast\n" |head -1
     }
@@ -407,7 +443,7 @@ then
 fi
 
 ## Count files
-nb_files "${search}"
+NB_FILES=$(eval $(nb_files ${search} ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
 
 ## Is there too many files?
 if [ $MAX_COUNT -gt -1 ]
