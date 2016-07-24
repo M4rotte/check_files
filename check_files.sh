@@ -40,10 +40,17 @@ BIGGER_FILES_NB=0
 MIN_USAGE=0
 MAX_USAGE=-1
 
+# What pager is available?
+
+if env less
+then pager='less'
+else pager='more'
+fi
+
 # Help message
 
 help_message() {
-more <<EOF
+$pager <<EOF
 
 $(basename "$0")
 
@@ -100,7 +107,7 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                           in conjonction with -r (recursive).
 
 EOF
-};
+}
 
 # Check for positive integer
 is_int() {
