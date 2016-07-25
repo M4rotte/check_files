@@ -470,10 +470,11 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 if [ "$MIN_USAGE" -gt 0 -o "$MAX_USAGE" -gt -1 ]
 then
     disk_usage "$search"
+    USAGE_MESSAGE="(${DISK_USAGE} kB)"
 else
-    DISK_USAGE=0    
+    DISK_USAGE=0
 fi
-USAGE_MESSAGE="(${DISK_USAGE} kB)"
+
 
 
 ## Is there too much space used?
