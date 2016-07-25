@@ -9,7 +9,7 @@ The different constraints are the following :
  - Age of each file
  - Size of each file
  - Number of files
- - Space used by the directory
+ - Space used by files
  
 For space used and size of file the unit is fixed and is kilo-bytes.
 
