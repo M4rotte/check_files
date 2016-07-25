@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-#~ set -x
+# set -x
 
 # Default values
 
@@ -163,7 +163,7 @@ while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
         (h)
             help_message;
             RETURN_CODE=3;
-            exit ${RETURN_CODE};
+            exit "${RETURN_CODE}";
             ;;
         (d)
             if [ ! -d "${OPTARG}" ];
@@ -191,83 +191,83 @@ while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
             SEARCH_NAME_EXCLUDE="${OPTARG}";
             ;;
         (a)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -a expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MIN_AGE=${OPTARG};
+                MIN_AGE="${OPTARG}";
             fi
             ;;
         (A)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -A expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MAX_AGE=${OPTARG};
+                MAX_AGE="${OPTARG}";
             fi
             ;;
         (n)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -n expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MIN_COUNT=${OPTARG};
+                MIN_COUNT="${OPTARG}";
             fi
             ;;
         (N)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -N expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MAX_COUNT=${OPTARG};
+                MAX_COUNT="${OPTARG}";
             fi
             ;;
         (s)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -s expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MIN_SIZE=${OPTARG};
+                MIN_SIZE="${OPTARG}";
             fi
             ;;
         (S)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -S expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MAX_SIZE=${OPTARG};
+                MAX_SIZE="${OPTARG}";
             fi
             ;;
         (u)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -u expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MIN_USAGE=${OPTARG};
+                MIN_USAGE="${OPTARG}";
             fi
             ;;
         (U)
-            if ! is_int ${OPTARG};
+            if ! is_int "${OPTARG}";
             then
                 printf "\n%s\n" "Option -U expects a positive integer number as argument."
                 RETURN_CODE=3;
-                exit ${RETURN_CODE};
+                exit "${RETURN_CODE}";
             else
-                MAX_USAGE=${OPTARG};
+                MAX_USAGE="${OPTARG}";
             fi
             ;;
         (t)
@@ -280,7 +280,7 @@ while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
             printf "%s\n" "Unsupported option...";
             help_message;
             RETURN_CODE=3
-            exit ${RETURN_CODE};
+            exit "${RETURN_CODE}";
             ;;
     esac
 done;
@@ -309,18 +309,9 @@ find_type_clause "${SEARCH_TYPE}"
 
 # Prepare the name clause for find
 find_name_clause() {
-    if [ $(expr length $1) -gt 2 ]
-    then
-        FIND_NAME_CLAUSE=" -name "$1
-    fi
-    if [ $(expr length $1) -gt 2 -a $(expr length $2) -gt 2  ]
-    then
-        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}" -a "
-    fi    
-    if [ $(expr length $2) -gt 2  ]
-    then
-        FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}"\! -name  "$2
-    fi    
+[ $(expr length $1) -gt 2 ] && FIND_NAME_CLAUSE=" -name "$1
+[ $(expr length $1) -gt 2 -a $(expr length $2) -gt 2  ] && FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}" -a "
+[ $(expr length $2) -gt 2  ] && FIND_NAME_CLAUSE=${FIND_NAME_CLAUSE}"\! -name  "$2
 }
 find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
 
@@ -333,44 +324,43 @@ EOF
 
 # Count number of files newer than min-age
 newer_files_nb() {
-    NEWER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin -${MIN_AGE}) |wc -l)
+    NEWER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin -"${MIN_AGE}") |wc -l)
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-    OLDER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -mmin +${MAX_AGE}) |wc -l)
+    OLDER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin +"${MAX_AGE}") |wc -l)
 }
 
 # Count number of files smaller than min-size
 smaller_files_nb() {
-    SMALLER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size -${MIN_SIZE}k) |wc -l)
+    SMALLER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size -"${MIN_SIZE}"k) |wc -l)
 }
 
 # Count number of files bigger than max-size
 bigger_files_nb() {
-    BIGGER_FILES_NB=$(eval $(do_find $1 ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} -size +${MAX_SIZE}k) |wc -l)
+    BIGGER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size +"${MAX_SIZE}"k) |wc -l)
 }
 
 # Measure disk usage
-
 disk_usage() {
-    DISK_USAGE=$(eval $(do_find $1 -type f ${FIND_NAME_CLAUSE} -exec 'du -sk {} \;' )| cut -f1 | awk '{total=total+$1}END{print total}')
+    DISK_USAGE=$(eval $(do_find "$1" -type f "${FIND_NAME_CLAUSE}" -exec 'du -sk {} \;' )| cut -f1 |\
+                awk '{total=total+$1}END{print total}')
+    [ -z "$DISK_USAGE" ] && DISK_USAGE=0            
 }
 
 # Check if we have the GNU implementation of find
 is_gnu_find() {
     if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
-    then
-        true
-    else
-        false
+    then true
+    else false
     fi    
 }
 
 # Main script #
 
 ## Recursive?
-if $RECURSIVE
+if "$RECURSIVE"
 then 
     tag="(R${SEARCH_TYPE}|i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH"
@@ -380,7 +370,7 @@ else
 fi
 
 # Multiline?
-if $MULTILINE
+if "$MULTILINE"
 then
     template='\n%s\n%s\n'
     sep='\n'
@@ -390,147 +380,122 @@ else
 fi
 
 ## Count files
-NB_FILES=$(eval $(do_find '${search}' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE}) |wc -l)
+NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}") |wc -l)
 
 # Search for oldest and newest files
-if is_gnu_find && $SEARCH_AGE
-then
+[ is_gnu_find -a "$SEARCH_AGE" ] && {
     format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
-    firstlast=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    by_age=$(eval $(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" "${format}") |sort -n |\
+               awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
-    printf "$firstlast\n" |head -1
+    printf "$by_age\n" |head -1
     }
     newest_file() {
-    printf "$firstlast\n" |tail -1
+    printf "$by_age\n" |tail -1
     }
     OLDEST_MESSAGE=$(printf '%s\n' "[Oldest:$(oldest_file)]")
     NEWEST_MESSAGE=$(printf '%s\n' "[Newest:$(newest_file)]")
     OLDNEW_MESSAGE=$(printf "$template" "${OLDEST_MESSAGE}" "${NEWEST_MESSAGE}")
-fi
+}
 
 # Search for smallest and biggest files
-if is_gnu_find && $SEARCH_SIZE
-then
+[ is_gnu_find -a  "$SEARCH_SIZE" ] && {
     format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
-    firstlast=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+    by_size=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
+               awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     smallest_file() {
-    printf "$firstlast\n" |head -1
+    printf "$by_size\n" |head -1
     }
     biggest_file() {
-    printf "$firstlast\n" |tail -1
+    printf "$by_size\n" |tail -1
     }
     SMALLEST_MESSAGE=$(printf '%s\n' "[Smallest:$(smallest_file)]")
     BIGGEST_MESSAGE=$(printf '%s\n' "[Biggest:$(biggest_file)]")
     SMALLBIG_MESSAGE=$(printf "$template" "${SMALLEST_MESSAGE}" "${BIGGEST_MESSAGE}")
-fi
+}
 
 ## Is there a file newer than min_age?
-if [ $MIN_AGE -gt 0 ]
-then
+[ "$MIN_AGE" -gt 0 ] && {
     newer_files_nb "${search}";
-    if [ ${NEWER_FILES_NB} -gt 0 ]
-    then
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${NEWEST_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+    [ "${NEWER_FILES_NB}" -gt 0 ] && {
+        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${NEWEST_MESSAGE}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there a file older than max_age?
-if [ $MAX_AGE -gt -1 ]
-then
+[ "$MAX_AGE" -gt -1 ] && {
     older_files_nb "${search}"
-    if [ ${OLDER_FILES_NB} -gt 0 ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH}${tag}${RETURN_MESSAGE_SEP}${OLDEST_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+    [ "${OLDER_FILES_NB}" -gt 0 ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${OLDEST_MESSAGE}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there too many files?
-if [ $MAX_COUNT -gt -1 ]
-then
-    if [ ${NB_FILES} -gt ${MAX_COUNT} ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"More than ${MAX_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+[ "$MAX_COUNT" -gt -1 ] && {
+    [ "${NB_FILES}" -gt "${MAX_COUNT}" ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}More than ${MAX_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there too few files?
-if [ $MIN_COUNT -gt 0 ]
-then
-    if [ ${NB_FILES} -lt ${MIN_COUNT} ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+[ "$MIN_COUNT" -gt 0 ] && {
+    [ "${NB_FILES}" -lt "${MIN_COUNT}" ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there files which are too big?
-if [ $MAX_SIZE -gt -1 ]
-then
+[ "$MAX_SIZE" -gt -1 ] && {
     bigger_files_nb "${search}"
-    if [ ${BIGGER_FILES_NB} -gt 0 ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${BIGGEST_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+    [ "${BIGGER_FILES_NB}" -gt 0 ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}"${BIGGEST_MESSAGE}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there files which are too small?
-if [ $MIN_SIZE -gt 0 ]
-then
+[ "$MIN_SIZE" -gt 0 ] && {
     smaller_files_nb "${search}"
-    if [ ${SMALLER_FILES_NB} -gt 0 ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag} ${SMALLEST_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi
-fi
+    [ "${SMALLER_FILES_NB}" -gt 0 ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}"${SMALLEST_MESSAGE}}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 # Measure disk usage
-if [ $MIN_USAGE -gt 0 -o $MAX_USAGE -gt -1 ]
+if [ "$MIN_USAGE" -gt 0 -o "$MAX_USAGE" -gt -1 ]
 then
-    disk_usage '$search'
+    disk_usage "$search"
 else
     DISK_USAGE=0    
 fi
 
-if [ $DISK_USAGE -gt 0 ]
-then
-USAGE_MESSAGE="("${DISK_USAGE}" kB)"
-fi
 
 ## Is there too much space used?
-if [ $MAX_USAGE -gt -1 ]
-then
-    if [ $DISK_USAGE -gt $MAX_USAGE ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses more than $MAX_USAGE kB ${USAGE_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi    
-fi
+[ "$MAX_USAGE" -gt -1 ] && {
+    [ "$DISK_USAGE" -gt "$MAX_USAGE" ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} uses more than $MAX_USAGE kB ${USAGE_MESSAGE}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
 ## Is there too few space used?
-if [ $MIN_USAGE -gt 0 ]
-then
-    if [ $DISK_USAGE -lt $MIN_USAGE ]
-    then
-        RETURN_MESSAGE=${RETURN_MESSAGE}"${SEARCH_PATH} uses less than $MIN_USAGE kB ${USAGE_MESSAGE}${sep}"
-        RETURN_CODE=${ERROR_CODE}
-    fi    
-fi
+[ "$MIN_USAGE" -gt 0 ] && {
+    [ "$DISK_USAGE" -lt "$MIN_USAGE" ] && {
+        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} uses less than $MIN_USAGE kB ${USAGE_MESSAGE}"${sep}
+        RETURN_CODE="${ERROR_CODE}"
+    } }
 
-## Return message empty => Retur 0 (OK) and a gentle & convenient message
-if [ -z "${RETURN_MESSAGE}" ]
-then
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE} ${OLDNEW_MESSAGE} ${SMALLBIG_MESSAGE}"
+## Return message empty => Return 0 (OK) and a gentle & convenient message
+[ -z "${RETURN_MESSAGE}" ] && {
+    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE}"
+    [ "$SEARCH_AGE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${OLDNEW_MESSAGE}"; }
+    [ "$SEARCH_SIZE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLBIG_MESSAGE}"; }
     RETURN_CODE=0
-fi
-#~ printf "%s\n" "${RETURN_MESSAGE}"
-echo "${RETURN_MESSAGE}"
-exit ${RETURN_CODE}
+}
+
+printf "${RETURN_MESSAGE}\n"
+exit "${RETURN_CODE}"
