@@ -473,6 +473,7 @@ then
 else
     DISK_USAGE=0    
 fi
+USAGE_MESSAGE="(${DISK_USAGE} kB)"
 
 
 ## Is there too much space used?
