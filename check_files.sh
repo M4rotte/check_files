@@ -64,7 +64,7 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                         [-t filetype]
 
 
- -d/--dir        <path>   Directory to search files in (default: \$HOME)
+ -d/--dir        <path>   Directory to search files in (default: ${SEARCH_PATH})
  -r/--recursive           Search recursively (default: $RECURSIVE)
  -t/--file-type  <string> Type of file to search for (default: $SEARCH_TYPE)
                           It may be any combination of the following letters:
