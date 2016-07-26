@@ -64,7 +64,7 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                         [-t filetype]
 
 
- -d/--dir        <path>   Directory to search files in (default: \$HOME)
+ -d/--dir        <path>   Directory to search files in (default: ${SEARCH_PATH})
  -r/--recursive           Search recursively (default: $RECURSIVE)
  -t/--file-type  <string> Type of file to search for (default: $SEARCH_TYPE)
                           It may be any combination of the following letters:
@@ -352,8 +352,10 @@ disk_usage() {
 # Check if we have the GNU implementation of find
 is_gnu_find() {
     if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
-    then true
-    else false
+    then
+        true
+    else
+        false
     fi    
 }
 
@@ -383,7 +385,7 @@ fi
 NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}") |wc -l)
 
 # Search for oldest and newest files
-[ is_gnu_find -a "$SEARCH_AGE" ] && {
+[ $(is_gnu_find) -a "$SEARCH_AGE" ] && {
     format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
     by_age=$(eval $(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" "${format}") |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
@@ -400,7 +402,7 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 }
 
 # Search for smallest and biggest files
-[ is_gnu_find -a  "$SEARCH_SIZE" ] && {
+[ $(is_gnu_find) -a  "$SEARCH_SIZE" ] && {
     format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
     by_size=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
