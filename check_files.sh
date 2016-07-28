@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# set -x
+set -x
 
 # Default values
 
@@ -10,6 +10,8 @@ VERBOSITY=0
 RETURN_CODE=3                # UNKNOWN : Status if anything goes wrong past this line.
 ERROR_CODE=2                 # CRITICAL : Status on error (use option -W to set it to 1 (WARNING) instead)
 MULTILINE=false              # Output on one line by defaut
+ERROR_PREFIX=""              # No prefix for error message by default
+OK_PREFIX=""                 # No prefix for OK message by default
 
 ## Search caracteristics
 SEARCH_PATH="."              # If not provided, search current dir
@@ -42,14 +44,12 @@ MIN_USAGE=0
 MAX_USAGE=-1
 
 # What pager is available?
-
 if env less 2>/dev/null
 then pager='less'
 else pager='more'
 fi
 
 # Help message
-
 help_message() {
 $pager <<EOF
 
@@ -75,12 +75,13 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
                             
                           ex: 'fd' to search for regular files and directories.
                           
-                          [NB]: '.' and '..' are counted when searching for directories.
+                          [NB]: '.' and '..' are counted when searching for directories in
+                                non-recursive mode.
                           
                           To check if a directory is empty use: -tfdl -N2
                           
                                     -tfdl -N2
-                                    
+  
  -i/--include    <string> Search only for files with this name
  -x/--exclude    <string> Exclude files with this name
  
@@ -94,11 +95,13 @@ Usage: $(basename "$0") [-vhrWlLM] [-a min-age] [-A max-age] [-n min-count] [-N 
  -s/--min-size   <int>    Minimum size of each file in kB (default: ${MIN_SIZE})
  -S/--max-size   <int>    Maximum size of each file in kB (default: ${MAX_SIZE})
  -u/--min-usage  <int>    Minimum disk usage for files in kB (default: ${MIN_USAGE})
- -U/--max-usage  <int>    Maximum disk usage for files in kB (default: ${MAX_USAGE}) 
+ -U/--max-usage  <int>    Maximum disk usage for files in kB (default: ${MAX_USAGE})
+
  -W/--warn-only           Return 1 (WARNING) instead of 2 (CRITICAL)
                           on constraints violation.
  -M/--multiline           Add line returns in the output
-                           
+ -E/--error      <string> Prefix for error message (default: ${ERROR_PREFIX})
+ -O/--ok         <string> Prefix for OK message (default: ${OK_PREFIX})                          
  -h/--help                Show this help
  -v/--verbose             Verbose mode
  
@@ -147,12 +150,14 @@ for arg in "${@}"; do
      ("--include")      set -- "${@}" "-i" ;;
      ("--exclude")      set -- "${@}" "-x" ;;
      ("--multiline")    set -- "${@}" "-M" ;;
+     ("--error")        set -- "${@}" "-E" ;;
+     ("--ok")           set -- "${@}" "-O" ;;
      (*)                set -- "${@}" "${arg}"
   esac
 done;
 
 ## Parse command line options
-while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
+while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:E:O:" opt; do
     case "${opt}" in
         (v)
             VERBOSE=true;
@@ -276,6 +281,12 @@ while getopts "vWhMlLi:x:d:ra:A:n:N:s:S:u:U:t:" opt; do
         (M)
             MULTILINE=true
             ;;
+        (E)
+            ERROR_PREFIX="${OPTARG} - ";
+            ;;
+        (O)
+            OK_PREFIX="${OPTARG} - ";
+            ;;
         (\?)
             printf "%s\n" "Unsupported option...";
             help_message;
@@ -352,10 +363,8 @@ disk_usage() {
 # Check if we have the GNU implementation of find
 is_gnu_find() {
     if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
-    then
-        true
-    else
-        false
+    then true
+    else false
     fi    
 }
 
@@ -422,7 +431,7 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 [ "$MIN_AGE" -gt 0 ] && {
     newer_files_nb "${search}";
     [ "${NEWER_FILES_NB}" -gt 0 ] && {
-        RETURN_MESSAGE="${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${NEWEST_MESSAGE}"${sep}
+        RETURN_MESSAGE="${ERROR_PREFIX}${NEWER_FILES_NB} files newer than ${MIN_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${NEWEST_MESSAGE}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
 
@@ -430,14 +439,14 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 [ "$MAX_AGE" -gt -1 ] && {
     older_files_nb "${search}"
     [ "${OLDER_FILES_NB}" -gt 0 ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${OLDEST_MESSAGE}"${sep}
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}${OLDER_FILES_NB} files older than ${MAX_AGE} minutes in ${SEARCH_PATH} ${tag}"${sep}"${OLDEST_MESSAGE}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
 
 ## Is there too many files?
 [ "$MAX_COUNT" -gt -1 ] && {
     [ "${NB_FILES}" -gt "${MAX_COUNT}" ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}More than ${MAX_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}More than ${MAX_COUNT} files found : ${NB_FILES} files in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
@@ -445,7 +454,7 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 ## Is there too few files?
 [ "$MIN_COUNT" -gt 0 ] && {
     [ "${NB_FILES}" -lt "${MIN_COUNT}" ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}Less than ${MIN_COUNT} files found : ${NB_FILES} files in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
@@ -454,7 +463,7 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 [ "$MAX_SIZE" -gt -1 ] && {
     bigger_files_nb "${search}"
     [ "${BIGGER_FILES_NB}" -gt 0 ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}${BIGGER_FILES_NB} files over ${MAX_SIZE} kB in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}"${BIGGEST_MESSAGE}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
@@ -463,7 +472,7 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 [ "$MIN_SIZE" -gt 0 ] && {
     smaller_files_nb "${search}"
     [ "${SMALLER_FILES_NB}" -gt 0 ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}${SMALLER_FILES_NB} files under ${MIN_SIZE} kB in "
         RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} ${tag}"${sep}"${SMALLEST_MESSAGE}}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
@@ -482,20 +491,20 @@ fi
 ## Is there too much space used?
 [ "$MAX_USAGE" -gt -1 ] && {
     [ "$DISK_USAGE" -gt "$MAX_USAGE" ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} uses more than $MAX_USAGE kB ${USAGE_MESSAGE}"${sep}
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}${SEARCH_PATH} uses more than $MAX_USAGE kB ${USAGE_MESSAGE}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
 
 ## Is there too few space used?
 [ "$MIN_USAGE" -gt 0 ] && {
     [ "$DISK_USAGE" -lt "$MIN_USAGE" ] && {
-        RETURN_MESSAGE="${RETURN_MESSAGE}${SEARCH_PATH} uses less than $MIN_USAGE kB ${USAGE_MESSAGE}"${sep}
+        RETURN_MESSAGE="${ERROR_PREFIX}${RETURN_MESSAGE}${SEARCH_PATH} uses less than $MIN_USAGE kB ${USAGE_MESSAGE}"${sep}
         RETURN_CODE="${ERROR_CODE}"
     } }
 
 ## Return message empty => Return 0 (OK) and a gentle & convenient message
 [ -z "${RETURN_MESSAGE}" ] && {
-    RETURN_MESSAGE="${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE}"
+    RETURN_MESSAGE="${OK_PREFIX}${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE}"
     [ "$SEARCH_AGE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${OLDNEW_MESSAGE}"; }
     [ "$SEARCH_SIZE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLBIG_MESSAGE}"; }
     RETURN_CODE=0
