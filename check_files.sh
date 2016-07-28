@@ -329,28 +329,28 @@ find_name_clause "'"${SEARCH_NAME_INCLUDE}"'" "'"${SEARCH_NAME_EXCLUDE}"'"
 # Do find
 do_find() {
 cat <<EOF
-find $*
+find $@
 EOF
 }
 
 # Count number of files newer than min-age
 newer_files_nb() {
-    NEWER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin -"${MIN_AGE}") |wc -l)
+    NEWER_FILES_NB=$(eval "$(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin -"${MIN_AGE}")" |wc -l)
 }
 
 # Count number of files older than max-age
 older_files_nb() {
-    OLDER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin +"${MAX_AGE}") |wc -l)
+    OLDER_FILES_NB=$(eval "$(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -mmin +"${MAX_AGE}")" |wc -l)
 }
 
 # Count number of files smaller than min-size
 smaller_files_nb() {
-    SMALLER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size -"${MIN_SIZE}"k) |wc -l)
+    SMALLER_FILES_NB=$(eval "$(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size -"${MIN_SIZE}"k)" |wc -l)
 }
 
 # Count number of files bigger than max-size
 bigger_files_nb() {
-    BIGGER_FILES_NB=$(eval $(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size +"${MAX_SIZE}"k) |wc -l)
+    BIGGER_FILES_NB=$(eval "$(do_find "$1" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" -size +"${MAX_SIZE}"k)" |wc -l)
 }
 
 # Measure disk usage
@@ -391,14 +391,14 @@ else
 fi
 
 ## Count files
-NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}") |wc -l)
+NB_FILES=$(eval "$(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}")" |wc -l)
 
 # Search for oldest and newest files
 [ $(is_gnu_find) -a "$SEARCH_AGE" ] && {
     format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
-    by_age=$(eval $(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" "${format}") |sort -n |\
+    by_age=$(eval "$(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" "${format}") |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
-               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}'")
     oldest_file() {
     printf "$by_age\n" |head -1
     }
@@ -413,9 +413,9 @@ NB_FILES=$(eval $(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}
 # Search for smallest and biggest files
 [ $(is_gnu_find) -a  "$SEARCH_SIZE" ] && {
     format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
-    by_size=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
+    by_size=$(eval "$(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
-               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}'")
     smallest_file() {
     printf "$by_size\n" |head -1
     }
