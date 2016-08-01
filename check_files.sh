@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-set -x
+# set -x
 
 # Default values
 
@@ -16,8 +16,8 @@ OK_PREFIX=""                 # No prefix for OK message by default
 ## Search caracteristics
 SEARCH_PATH="."              # If not provided, search current dir
 SEARCH_TYPE='f'              # Search only regular files
-SEARCH_AGE=false             # Do not search for oldest and newest files
-SEARCH_SIZE=false            # Do not search for biggest and tiniest files
+SEARCH_AGE=$(false)             # Do not search for oldest and newest files
+SEARCH_SIZE=$(false)            # Do not search for biggest and tiniest files
 SEARCH_NAME_INCLUDE=""       # Only include files with this name from the count
 SEARCH_NAME_EXCLUDE=""       # Exclude files with this name from the count
 RECURSIVE=false              # Do not search in sub directories
@@ -363,8 +363,10 @@ disk_usage() {
 # Check if we have the GNU implementation of find
 is_gnu_find() {
     if [ $(find --version 2>/dev/null |grep -cw GNU) -gt 0 ]
-    then true
-    else false
+    then
+        true
+    else
+        false
     fi    
 }
 
@@ -394,11 +396,11 @@ fi
 NB_FILES=$(eval "$(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}")" |wc -l)
 
 # Search for oldest and newest files
-[ $(is_gnu_find) -a "$SEARCH_AGE" ] && {
+[ is_gnu_find -a "$SEARCH_AGE" ] && {
     format="-printf '%Cs;%Cc;%p;%k kB;%Y\n'"
-    by_age=$(eval "$(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" "${format}") |sort -n |\
+    by_age=$(eval $(do_find '$search' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}" ${format}) |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
-               END{print "(" $5 ")" $3 " (" $4 ") " $2}'")
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     oldest_file() {
     printf "$by_age\n" |head -1
     }
@@ -411,11 +413,11 @@ NB_FILES=$(eval "$(do_find '${search}' "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE
 }
 
 # Search for smallest and biggest files
-[ $(is_gnu_find) -a  "$SEARCH_SIZE" ] && {
+[ is_gnu_find -a  "$SEARCH_SIZE" ] && {
     format="-printf '%s;%Cc;%p;%k kB;%Y\n'"
-    by_size=$(eval "$(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
+    by_size=$(eval $(do_find '$search' ${FIND_TYPE_CLAUSE} ${FIND_NAME_CLAUSE} ${format}) |sort -n |\
                awk 'BEGIN{FS=";"} {if (NR==1) print "(" $5 ")" $3 " (" $4 ") " $2} \
-               END{print "(" $5 ")" $3 " (" $4 ") " $2}'")
+               END{print "(" $5 ")" $3 " (" $4 ") " $2}')
     smallest_file() {
     printf "$by_size\n" |head -1
     }
@@ -505,8 +507,8 @@ fi
 ## Return message empty => Return 0 (OK) and a gentle & convenient message
 [ -z "${RETURN_MESSAGE}" ] && {
     RETURN_MESSAGE="${OK_PREFIX}${SEARCH_PATH} - ${NB_FILES} files ${tag} ${USAGE_MESSAGE}"
-    [ "$SEARCH_AGE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${OLDNEW_MESSAGE}"; }
-    [ "$SEARCH_SIZE" = true ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLBIG_MESSAGE}"; }
+    [ $SEARCH_AGE  ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${OLDNEW_MESSAGE}"; }
+    [ $SEARCH_SIZE ] && { RETURN_MESSAGE="${RETURN_MESSAGE}${SMALLBIG_MESSAGE}"; }
     RETURN_CODE=0
 }
 
