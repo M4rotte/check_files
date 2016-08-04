@@ -13,6 +13,6 @@ The different constraints are the following :
  
 For space used and size of file the unit is fixed and is kilo-bytes.
 
-More than one constraint may be specified, they will be checked in this order (age, number, size, used).
+More than one constraint may be specified (min and/or max), they will be checked in this order (age, number, size, used).
 
 Although the script is portable and should run unmodified on any *NIX, some functionnalities are only available if _find_ is GNU find.
