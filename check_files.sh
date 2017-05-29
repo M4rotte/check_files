@@ -375,10 +375,10 @@ is_gnu_find() {
 ## Recursive?
 if "$RECURSIVE"
 then 
-    tag="(R${SEARCH_TYPE}|i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
+    tag="(R${SEARCH_TYPE}/i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH"
 else 
-    tag="(${SEARCH_TYPE}|i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
+    tag="(${SEARCH_TYPE}/i:'${SEARCH_NAME_INCLUDE}'x:'${SEARCH_NAME_EXCLUDE}')"
     search="$SEARCH_PATH/* $SEARCH_PATH/.* -prune"
 fi
 
@@ -394,6 +394,9 @@ fi
 
 ## Count files
 NB_FILES=$(eval "$(do_find "${search}" "${FIND_TYPE_CLAUSE}" "${FIND_NAME_CLAUSE}")" |wc -l)
+
+## Perfdata
+PERFDATA="nb_files=$(echo ${NB_FILES} |awk '{print $1}') "
 
 # Search for oldest and newest files
 [ is_gnu_find -a "$SEARCH_AGE" ] && {
@@ -488,7 +491,8 @@ else
     DISK_USAGE=0
 fi
 
-
+## More perfdata
+PERFDATA="${PERFDATA} nb_files_older=${OLDER_FILES_NB} disk_usage=${DISK_USAGE}KB;$MAX_USAGE"
 
 ## Is there too much space used?
 [ "$MAX_USAGE" -gt -1 ] && {
@@ -512,5 +516,5 @@ fi
     RETURN_CODE=0
 }
 
-printf "${RETURN_MESSAGE}\n"
+printf "${RETURN_MESSAGE}|$PERFDATA\n"
 exit "${RETURN_CODE}"
